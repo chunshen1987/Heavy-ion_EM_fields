@@ -21,20 +21,27 @@
 
 #include "Stopwatch.h"
 #include "EM_fields.h"
+#include "ParameterReader.h"
 
 using namespace std;
 
-int main()
+int main(int argc, char *argv[])
 {
-   Stopwatch sw;
+    Stopwatch sw;
 
-   sw.tic();
+    sw.tic();
 
-   EM_fields testEM;
-   testEM.calculate_EM_fields();
+    // Read-in parameters
+    ParameterReader paraRdr;
+    paraRdr.readFromFile("parameters.dat");
+    paraRdr.readFromArguments(argc, argv);
+    paraRdr.echo();
 
-   sw.toc();
-   cout << "Totally takes " << sw.takeTime() << " sec." << endl;
-   return(0);
+    EM_fields testEM;
+    testEM.calculate_EM_fields();
+
+    sw.toc();
+    cout << "Totally takes " << sw.takeTime() << " sec." << endl;
+    return(0);
 }
 

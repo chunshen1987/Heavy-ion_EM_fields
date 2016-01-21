@@ -1,7 +1,9 @@
 add_executable (EM_fields.e
   main.cpp
   EM_fields.cpp
+  ParameterReader.cpp
   gauss_quadrature.cpp
+  arsenal.cpp
   )
 target_link_libraries (EM_fields.e ${LIBS})
 

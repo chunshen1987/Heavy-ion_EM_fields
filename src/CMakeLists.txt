@@ -2,7 +2,6 @@ add_executable (EM_fields.e
   main.cpp
   EM_fields.cpp
   gauss_quadrature.cpp
-  Spectators.cpp
   )
 target_link_libraries (EM_fields.e ${LIBS})
 

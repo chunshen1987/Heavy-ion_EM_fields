@@ -2,14 +2,15 @@
 //                Calculate the EM fields from Spectators 
 //                         in heavy-ion collisions
 //
-//              author: Chun Shen <shen@mps.ohio-state.edu>
+//              author: Chun Shen <chunshen@physics.mcgill.ca>
 //
-//  This code reads in the spectators from initial condition Monte-Carlo 
-//  generator and calculates the EM fields for heavy-ion collisions.
+//  This code reads in the spectator and participant densities from 
+//  initial condition Monte-Carlo generator and calculates the EM fields 
+//  for heavy-ion collisions at the given space-time points.
+//
 //  Note: the output results for the EM fields are actually e*E or e*B 
 //        in the unit [MeV^2]
 //
-//  To do in the future:
 /////////////////////////////////////////////////////////////////////////
 
 #include<iostream>
@@ -19,7 +20,6 @@
 #include<iomanip>
 
 #include "Stopwatch.h"
-#include "Spectators.h"
 #include "EM_fields.h"
 
 using namespace std;
@@ -30,11 +30,8 @@ int main()
 
    sw.tic();
 
-   Spectators testSp("Spectators.dat");
    EM_fields testEM;
-   testEM.calculate_EM_fields(testSp);
-   testEM.output_EM_fields_transverse_plane(3, 0);
-   testEM.output_EM_fields_time_evolution(5, 5, 0);
+   testEM.calculate_EM_fields();
 
    sw.toc();
    cout << "Totally takes " << sw.takeTime() << " sec." << endl;

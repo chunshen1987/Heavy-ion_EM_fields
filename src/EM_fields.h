@@ -1,8 +1,7 @@
 #ifndef EM_FIELDS_H
 #define EM_FIELDS_H
 
-#include "parameter.h"
-#include "Spectators.h"
+#include "ParameterReader.h"
 #include<string>
 
 using namespace std;

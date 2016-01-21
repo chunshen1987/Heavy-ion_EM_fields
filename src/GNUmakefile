@@ -24,11 +24,11 @@ ifeq "$(MAIN)" ""
 MAIN		=	EM_fields.e
 endif
 
-SRC		=	main.cpp gauss_quadrature.cpp ParameterReader.cpp \
+SRC		=	main.cpp ParameterReader.cpp \
 			EM_fields.cpp arsenal.cpp
 
 INC		= 	EM_fields.h Stopwatch.h ParameterReader.h arsenal.h \
-                  parameter.h gauss_quadrature.h \
+                  parameter.h
 
 # -------------------------------------------------
 
@@ -74,8 +74,7 @@ install:	$(TARGET)
 		cp $(TARGET) $(INSTPATH)
 
 # --------------- Dependencies -------------------
-./main.cpp: EM_fields.h parameter.h Stopwatch.h Spectators.h
-./EM_fields.cpp: gauss_quadrature.h EM_fields.h Spectators.h parameter.h 
-./gauss_quadrature.cpp: gauss_quadrature.h
+./main.cpp: EM_fields.h parameter.h Stopwatch.h ParameterReader.h
+./EM_fields.cpp: EM_fields.h ParameterReader.h parameter.h 
 ./ParameterReader.cpp: ParameterReader.h arsenal.h
 ./arsenal.cpp: arsenal.h

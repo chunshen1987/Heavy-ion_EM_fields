@@ -4,9 +4,8 @@
 #include<cmath>
 #include<iomanip>
 
+#include "parameter.h"
 #include "EM_fields.h"
-#include "Spectators.h"
-#include "gauss_quadrature.h"
 
 using namespace std;
 
@@ -29,6 +28,16 @@ EM_fields::~EM_fields()
    delete[] eta;
 
    return;
+}
+
+EM_fields::read_in_spectators_density(string filename_1, string filename_2)
+{
+
+}
+
+EM_fields::read_in_participant_density(string filename_1, string filename_2)
+{
+
 }
 
 void EM_fields::calculate_EM_fields(Spectators nucleon_list)

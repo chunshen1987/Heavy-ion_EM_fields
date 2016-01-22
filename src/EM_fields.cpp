@@ -60,6 +60,12 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
     }
 
     n_eta = paraRdr->getVal("n_eta");
+    if(n_eta < 2)
+    {
+        cout << "EM_field: Error: n_eta needs to be at least 2" << endl;
+        cout << "current n_eta = " << n_eta << endl;
+        exit(1);
+    }
     eta_grid = new double [n_eta];
     double deta = 2.*beam_rapidity/(n_eta - 1.);
     for(int i = 0; i < n_eta; i++)

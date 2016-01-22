@@ -9,147 +9,189 @@
 
 using namespace std;
 
-EM_fields::EM_fields()
+EM_fields::EM_fields(ParameterReader* paraRdr_in)
 {
+    initialization_status = 0;
+    paraRdr = paraRdr_in;
+    int atomic_number = paraRdr->getVal("atomic_number");
+    int number_of_proton = paraRdr->getVal("number_of_proton");
+    charge_fraction = (double)number_of_proton/(double)atomic_number;
+    
+    double ecm = paraRdr->getVal("ecm");
+    double gamma = ecm/2./0.938;  // proton mass: 0.938 GeV
+    double beta = sqrt(1. - 1./(gamma*gamma));
+    double beam_rapidity = atanh(beta);
+    spectator_rap = beam_rapidity;
+    //cout << "spectator rapidity = " << spectator_rap << endl;
+    participant_rap = 0.0;
+
+    nucleon_density_grid_size = paraRdr->getVal("nucleon_density_grid_size");
+    nucleon_density_grid_dx = paraRdr->getVal("nucleon_density_grid_dx");
+    if(nucleon_density_grid_size <= 0)
+    {
+        cout << "EM_fields:: Error: Grid size for nucleon density profiles " 
+             << "needs to be larger than 0!" << endl;
+        cout << "Current grid_size = " << nucleon_density_grid_size << endl;
+        exit(1);
+    }
+    nucleon_density_grid_x_array = new double [nucleon_density_grid_size];
+    nucleon_density_grid_y_array = new double [nucleon_density_grid_size];
+    spectator_density_1 = new double* [nucleon_density_grid_size];
+    spectator_density_2 = new double* [nucleon_density_grid_size];
+    participant_density_1 = new double* [nucleon_density_grid_size];
+    participant_density_2 = new double* [nucleon_density_grid_size];
+    for(int i = 0; i < nucleon_density_grid_size; i++)
+    {
+        nucleon_density_grid_x_array[i] = (
+            -(nucleon_density_grid_size-1)/2. + i*nucleon_density_grid_dx);
+        nucleon_density_grid_y_array[i] = (
+            -(nucleon_density_grid_size-1)/2. + i*nucleon_density_grid_dx);
+        spectator_density_1[i] = new double [nucleon_density_grid_size];
+        spectator_density_2[i] = new double [nucleon_density_grid_size];
+        participant_density_1[i] = new double [nucleon_density_grid_size];
+        participant_density_2[i] = new double [nucleon_density_grid_size];
+        for(int j = 0; j < nucleon_density_grid_size; j++)
+        {
+            spectator_density_1[i][j] = 0.0;
+            spectator_density_2[i][j] = 0.0;
+            participant_density_1[i][j] = 0.0;
+            participant_density_2[i][j] = 0.0;
+        }
+    }
+    initialization_status = 1;
 }
 
 EM_fields::~EM_fields()
 {
-   delete[] E_x;
-   delete[] E_y;
-   delete[] E_z;
-   delete[] B_x;
-   delete[] B_y;
-   delete[] B_z;
+    if(initialization_status == 1)
+    {
+        for(int i = 0; i < nucleon_density_grid_size; i++)
+        {
+            delete[] spectator_density_1[i];
+            delete[] spectator_density_2[i];
+            delete[] participant_density_1[i];
+            delete[] participant_density_2[i];
+        }
+        delete[] spectator_density_1;
+        delete[] spectator_density_2;
+        delete[] participant_density_1;
+        delete[] participant_density_2;
+        delete[] nucleon_density_grid_x_array;
+        delete[] nucleon_density_grid_y_array;
 
-   delete[] tau;
-   delete[] x;
-   delete[] y;
-   delete[] eta;
+        E_x.clear();
+        E_y.clear();
+        E_z.clear();
+        B_x.clear();
+        B_y.clear();
+        B_z.clear();
 
-   return;
+        tau.clear();
+        x.clear();
+        y.clear();
+        eta.clear();
+    }
+    return;
 }
 
-EM_fields::read_in_spectators_density(string filename_1, string filename_2)
+void EM_fields::read_in_spectators_density(string filename_1, string filename_2)
 {
 
 }
 
-EM_fields::read_in_participant_density(string filename_1, string filename_2)
+void EM_fields::read_in_participant_density(string filename_1, string filename_2)
 {
 
 }
 
-void EM_fields::calculate_EM_fields(Spectators nucleon_list)
+void EM_fields::read_in_freezeout_surface_points(string filename)
 {
-   for(int i=0; i<nt; i++)
-      for(int j=0; j<nx; j++)
-         for(int k=0; k<ny; k++)
-            for(int l=0; l<nz; l++)
+    
+    EM_fields_array_length = x.size();
+}
+
+void EM_fields::calculate_EM_fields()
+{
+    double cosh_spectator_rap = cosh(spectator_rap);
+    double sinh_spectator_rap = sinh(spectator_rap);
+    for(int i_array = 0; i_array < EM_fields_array_length; i_array++)
+    {
+        double field_x = x[i_array];
+        double field_y = y[i_array];
+        double field_tau = tau[i_array];
+        double field_eta = eta[i_array];
+        
+        double temp_sum_Ex_spectator = 0.0e0;
+        double temp_sum_Ey_spectator = 0.0e0;
+        double temp_sum_Ez_spectator = 0.0e0;
+        double temp_sum_Bx_spectator = 0.0e0;
+        double temp_sum_By_spectator = 0.0e0;
+
+        double z_local_spectator_1 = field_tau*sinh(field_eta - spectator_rap);
+        double z_local_spectator_2 = field_tau*sinh(field_eta + spectator_rap);
+        double z_local_spectator_1_sq = z_local_spectator_1*z_local_spectator_1;
+        double z_local_spectator_2_sq = z_local_spectator_2*z_local_spectator_2;
+
+        for(int i = 0; i < nucleon_density_grid_size; i++)
+        {
+            double grid_x = nucleon_density_grid_x_array[i];
+            for(int j = 0; j < nucleon_density_grid_size; j++)
             {
-               double temp_sum_Ex = 0.0e0;
-               double temp_sum_Ey = 0.0e0;
-               double temp_sum_Ez = 0.0e0;
-               double temp_sum_Bx = 0.0e0;
-               double temp_sum_By = 0.0e0;
-               double temp_sum_Bz = 0.0e0;
-               for(int list_idx=0; list_idx < list_length; list_idx++)
-               {
-                  double x_local, y_local, z_local;
-                  x_local = x[j] - nucleon_position_x[list_idx];
-                  y_local = y[k] - nucleon_position_y[list_idx];
-                  z_local = z[l]*nucleon_cosh_y[list_idx] - t[i]*nucleon_sinh_y[list_idx];
-                  double denominator, denominator_cubic;
-                  double Ex_integrand, Ey_integrand, Ez_integrand, Bx_integrand, By_integrand, Bz_integrand;
-                  double Ex_integral, Ey_integral, Ez_integral, Bx_integral, By_integral, Bz_integral;
-                  switch(Nucleon_type)
-                  {
-                     case 0: //point-like nucleons
-                       denominator = sqrt(x_local*x_local + y_local*y_local + z_local*z_local);
-                       denominator_cubic = denominator*denominator*denominator;
-                       Ex_integral = nucleon_cosh_y[list_idx]*x_local/denominator_cubic;
-                       Ey_integral = nucleon_cosh_y[list_idx]*y_local/denominator_cubic;
-                       Ez_integral = z_local/denominator_cubic;
-                       Bx_integral = nucleon_sinh_y[list_idx]*y_local/denominator_cubic;
-                       By_integral = - nucleon_sinh_y[list_idx]*x_local/denominator_cubic;
-                       Bz_integral = 0.0e0;
-                       break;
-                     case 1: //disk-like nucleons
-                       for(int i_r=0; i_r<n_r; i_r++)
-                          for(int i_phi=0; i_phi<n_phi; i_phi++)
-                          {
-                             denominator = sqrt(x_local*x_local + y_local*y_local + r[i_r]*r[i_r] - 2*r[i_r]*(cos_phi[i_phi]*x_local+sin_phi[i_phi]*y_local) + z_local*z_local);
-                             denominator_cubic = denominator*denominator*denominator;
-                             Ex_integrand = norm_disk*nucleon_cosh_y[list_idx]*(x_local - r[i_r]*cos_phi[i_phi])/denominator_cubic;
-                             Ey_integrand = norm_disk*nucleon_cosh_y[list_idx]*(y_local - r[i_r]*sin_phi[i_phi])/denominator_cubic;
-                             Ez_integrand = norm_disk*z_local/denominator_cubic;
-                             Bx_integrand = norm_disk*nucleon_sinh_y[list_idx]*(y_local - r[i_r]*sin_phi[i_phi])/denominator_cubic;
-                             By_integrand = - norm_disk*nucleon_sinh_y[list_idx]*(x_local - r[i_r]*cos_phi[i_phi])/denominator_cubic;
-                             Bz_integrand = 0.0e0;
-                             
-                             Ex_integral += Ex_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Ey_integral += Ey_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Ez_integral += Ez_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Bx_integral += Bx_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             By_integral += By_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Bz_integral += Bz_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                          }
-                       break;
-                     case 2: //gaussian-like nucleons
-                       for(int i_r=0; i_r<n_r; i_r++)
-                          for(int i_phi=0; i_phi<n_phi; i_phi++)
-                          {
-                             double expon = exp( - r[i_r]*r[i_r]/(2*sigma_gaussian*sigma_gaussian));
-                             denominator = sqrt(x_local*x_local + y_local*y_local + r[i_r]*r[i_r] - 2*r[i_r]*(cos_phi[i_phi]*x_local+sin_phi[i_phi]*y_local) + z_local*z_local);
-                             denominator_cubic = denominator*denominator*denominator;
-                             Ex_integrand = norm_gaussian*nucleon_cosh_y[list_idx]*expon*(x_local - r[i_r]*cos_phi[i_phi])/denominator_cubic;
-                             Ey_integrand = norm_gaussian*nucleon_cosh_y[list_idx]*expon*(y_local - r[i_r]*sin_phi[i_phi])/denominator_cubic;
-                             Ez_integrand = norm_gaussian*expon*z_local/denominator_cubic;
-                             Bx_integrand = norm_gaussian*expon*nucleon_sinh_y[list_idx]*(y_local - r[i_r]*sin_phi[i_phi])/denominator_cubic;
-                             By_integrand = - norm_gaussian*expon*nucleon_sinh_y[list_idx]*(x_local - r[i_r]*cos_phi[i_phi])/denominator_cubic;
-                             Bz_integrand = 0.0e0;
-                             
-                             Ex_integral += Ex_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Ey_integral += Ey_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Ez_integral += Ez_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Bx_integral += Bx_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             By_integral += By_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                             Bz_integral += Bz_integrand*phi_weight[i_phi]*r_weight[i_r]*r[i_r];
-                          }
-                       break;
-                     default:
-                       cout << "EM_fields::calculate_EM_fields error: wrong type of nucleons, Nucleon_type = " << Nucleon_type << endl;
-                       exit(1);
-                       break;
-                  }
-                  temp_sum_Ex += e_sq*Ex_integral;
-                  temp_sum_Ey += e_sq*Ey_integral;
-                  temp_sum_Ez += e_sq*Ez_integral;
-                  temp_sum_Bx += e_sq*Bx_integral;
-                  temp_sum_By += e_sq*By_integral;
-                  temp_sum_Bz += e_sq*Bz_integral;
-                  Ex_integral = 0.0;
-                  Ey_integral = 0.0;
-                  Ez_integral = 0.0;
-                  Bx_integral = 0.0;
-                  By_integral = 0.0;
-                  Bz_integral = 0.0;
+                double grid_y = nucleon_density_grid_y_array[j];
 
-               }
-               E_x[i][j][k][l] = temp_sum_Ex*unit_convert;   // unit of [e*E_x] is MeV^2
-               E_y[i][j][k][l] = temp_sum_Ey*unit_convert;
-               E_z[i][j][k][l] = temp_sum_Ez*unit_convert;
-               B_x[i][j][k][l] = temp_sum_Bx*unit_convert;
-               B_y[i][j][k][l] = temp_sum_By*unit_convert;
-               B_z[i][j][k][l] = temp_sum_Bz*unit_convert;
+                double x_local = field_x - grid_x;
+                double y_local = field_y - grid_y;
+                double r_perp_local_sq = x_local*x_local + y_local*y_local;
+                double r_spectator_1 = sqrt(
+                                r_perp_local_sq + z_local_spectator_1_sq);
+                double r_cubic_spectator_1 = (r_spectator_1*r_spectator_1
+                                              *r_spectator_1);
+                double r_spectator_2 = sqrt(
+                                r_perp_local_sq + z_local_spectator_2_sq);
+                double r_cubic_spectator_2 = (r_spectator_2*r_spectator_2
+                                              *r_spectator_2);
+                double spectator_integrand_1 = (
+                                spectator_density_1[i][j]/r_cubic_spectator_1);
+                double spectator_integrand_2 = (
+                                spectator_density_2[i][j]/r_cubic_spectator_2);
+
+                double Ex_spectator_integrand = x_local*(
+                                spectator_integrand_1 + spectator_integrand_2);
+                double Ey_spectator_integrand = y_local*(
+                                spectator_integrand_1 + spectator_integrand_2);
+                double Ez_spectator_integrand = (
+                                  z_local_spectator_1*spectator_integrand_1 
+                                + z_local_spectator_2*spectator_integrand_2);
+                double Bx_spectator_integrand = y_local*(
+                                spectator_integrand_1 - spectator_integrand_2);
+                double By_spectator_integrand = x_local*(
+                                spectator_integrand_1 - spectator_integrand_2);
+                    
+                temp_sum_Ex_spectator += Ex_spectator_integrand;
+                temp_sum_Ey_spectator += Ey_spectator_integrand;
+                temp_sum_Ez_spectator += Ez_spectator_integrand;
+                temp_sum_Bx_spectator += Bx_spectator_integrand;
+                temp_sum_By_spectator += By_spectator_integrand;
             }
-   return;
+        }
+        E_x[i_array] = unit_convert*charge_fraction*e_sq*(
+                        cosh_spectator_rap*temp_sum_Ex_spectator);
+        E_y[i_array] = unit_convert*charge_fraction*e_sq*(
+                        cosh_spectator_rap*temp_sum_Ey_spectator);
+        E_z[i_array] = unit_convert*charge_fraction*e_sq*(temp_sum_Ez_spectator);
+        B_x[i_array] = unit_convert*charge_fraction*e_sq*(
+                        sinh_spectator_rap*temp_sum_Bx_spectator);
+        B_y[i_array] = unit_convert*charge_fraction*e_sq*(
+                        (-sinh_spectator_rap)*temp_sum_By_spectator);
+        B_z[i_array] = 0.0;
+    }
+    return;
 }
 
 void EM_fields::output_EM_fields(string filename)
 {
    ofstream output_file(filename.c_str());
-   for(int i = 0; i < n_array; i++)
+   for(int i = 0; i < EM_fields_array_length; i++)
    {
       output_file << scientific << setprecision(8) << setw(15)  
                   << tau[i] << "   " << x[i] << "   " << y[i] << "   "

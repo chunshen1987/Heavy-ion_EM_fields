@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     paraRdr.readFromArguments(argc, argv);
     paraRdr.echo();
 
-    EM_fields testEM;
+    EM_fields testEM(&paraRdr);
     testEM.calculate_EM_fields();
 
     sw.toc();

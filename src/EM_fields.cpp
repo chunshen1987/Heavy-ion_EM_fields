@@ -60,6 +60,8 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
     }
 
     read_in_densities("./results");
+    read_in_freezeout_surface_points("./results/surface.dat");
+    
     initialization_status = 1;
 }
 
@@ -156,7 +158,26 @@ void EM_fields::read_in_participant_density(string filename_1, string filename_2
 
 void EM_fields::read_in_freezeout_surface_points(string filename)
 {
+    ifstream FOsurf(filename.c_str());
+
+    cout << "read in freeze-out surface points ..." << endl;
+    // read in freeze-out surface positions
+    double dummy;
+    FOsurf >> dummy;
+    double tau_local, x_local, y_local, eta_local;
+    while(!FOsurf.eof())
+    {
+        FOsurf >> tau_local >> x_local >> y_local >> dummy >> dummy >> dummy;
+        eta_local = 0.0;
+        tau.push_back(tau_local);
+        x.push_back(x_local);
+        y.push_back(y_local);
+        eta.push_back(eta_local);
+        FOsurf >> dummy;
+    }
     EM_fields_array_length = x.size();
+    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+    FOsurf.close();
 }
 
 void EM_fields::calculate_EM_fields()
@@ -223,16 +244,23 @@ void EM_fields::calculate_EM_fields()
                 temp_sum_By_spectator += By_spectator_integrand;
             }
         }
-        E_x[i_array] = unit_convert*charge_fraction*e_sq*(
-                        cosh_spectator_rap*temp_sum_Ex_spectator);
-        E_y[i_array] = unit_convert*charge_fraction*e_sq*(
-                        cosh_spectator_rap*temp_sum_Ey_spectator);
-        E_z[i_array] = unit_convert*charge_fraction*e_sq*(temp_sum_Ez_spectator);
-        B_x[i_array] = unit_convert*charge_fraction*e_sq*(
-                        sinh_spectator_rap*temp_sum_Bx_spectator);
-        B_y[i_array] = unit_convert*charge_fraction*e_sq*(
-                        (-sinh_spectator_rap)*temp_sum_By_spectator);
-        B_z[i_array] = 0.0;
+        E_x.push_back(unit_convert*charge_fraction*e_sq*(
+                        cosh_spectator_rap*temp_sum_Ex_spectator));
+        E_y.push_back(unit_convert*charge_fraction*e_sq*(
+                        cosh_spectator_rap*temp_sum_Ey_spectator));
+        E_z.push_back(unit_convert*charge_fraction*e_sq*(temp_sum_Ez_spectator));
+        B_x.push_back(unit_convert*charge_fraction*e_sq*(
+                        sinh_spectator_rap*temp_sum_Bx_spectator));
+        B_y.push_back(unit_convert*charge_fraction*e_sq*(
+                        (-sinh_spectator_rap)*temp_sum_By_spectator));
+        B_z.push_back(0.0);
+        
+        if(i_array % (int)(EM_fields_array_length/10) == 0)
+        {
+            cout << "computing EM fields: " << setprecision(3) 
+                 << (double)i_array/(double)EM_fields_array_length*100 
+                 << "\% done." << endl;
+        }
     }
     return;
 }

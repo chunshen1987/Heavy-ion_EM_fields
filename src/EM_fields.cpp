@@ -13,6 +13,8 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
 {
     initialization_status = 0;
     paraRdr = paraRdr_in;
+
+    mode = paraRdr->getVal("mode");
     int atomic_number = paraRdr->getVal("atomic_number");
     int number_of_proton = paraRdr->getVal("number_of_proton");
     charge_fraction = (double)number_of_proton/(double)atomic_number;
@@ -74,7 +76,11 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
     }
 
     read_in_densities("./results");
-    read_in_freezeout_surface_points("./results/surface.dat");
+
+    if(mode == 0)
+        set_transverse_grid_points(0.2, 0.0);
+    else if(mode == 1)
+        read_in_freezeout_surface_points("./results/surface.dat");
     
     initialization_status = 1;
 }
@@ -176,6 +182,28 @@ void EM_fields::read_in_participant_density(string filename_1, string filename_2
     cout << " done!" << endl;
 }
 
+void EM_fields::set_transverse_grid_points(double tau_local, double eta_local)
+{
+    double EM_fields_grid_size = 20.0;
+    double EM_fields_grid_dx = 0.1;
+
+    int number_of_points = (int)(EM_fields_grid_size/EM_fields_grid_dx) + 1;
+    for(int i = 0; i < number_of_points; i++)
+    {
+        double x_local = - EM_fields_grid_size/2. + i*EM_fields_grid_dx;
+        for(int j = 0; j < number_of_points; j++)
+        {
+            double y_local = - EM_fields_grid_size/2. + j*EM_fields_grid_dx;
+            x.push_back(x_local);
+            y.push_back(y_local);
+            tau.push_back(tau_local);
+            eta.push_back(eta_local);
+        }
+    }
+    EM_fields_array_length = x.size();
+    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+}
+
 void EM_fields::read_in_freezeout_surface_points(string filename)
 {
     ifstream FOsurf(filename.c_str());
@@ -208,6 +236,8 @@ void EM_fields::calculate_EM_fields()
 {
     double cosh_spectator_rap = cosh(spectator_rap);
     double sinh_spectator_rap = sinh(spectator_rap);
+
+    double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
     for(int i_array = 0; i_array < EM_fields_array_length; i_array++)
     {
         double field_x = x[i_array];
@@ -269,14 +299,15 @@ void EM_fields::calculate_EM_fields()
             }
         }
         E_x.push_back(unit_convert*charge_fraction*e_sq*(
-                        cosh_spectator_rap*temp_sum_Ex_spectator));
+                        cosh_spectator_rap*temp_sum_Ex_spectator)*dx_sq);
         E_y.push_back(unit_convert*charge_fraction*e_sq*(
-                        cosh_spectator_rap*temp_sum_Ey_spectator));
-        E_z.push_back(unit_convert*charge_fraction*e_sq*(temp_sum_Ez_spectator));
+                        cosh_spectator_rap*temp_sum_Ey_spectator)*dx_sq);
+        E_z.push_back(unit_convert*charge_fraction*e_sq*(
+                        temp_sum_Ez_spectator)*dx_sq);
         B_x.push_back(unit_convert*charge_fraction*e_sq*(
-                        sinh_spectator_rap*temp_sum_Bx_spectator));
+                        sinh_spectator_rap*temp_sum_Bx_spectator)*dx_sq);
         B_y.push_back(unit_convert*charge_fraction*e_sq*(
-                        (-sinh_spectator_rap)*temp_sum_By_spectator));
+                        (-sinh_spectator_rap)*temp_sum_By_spectator)*dx_sq);
         B_z.push_back(0.0);
         
         if(i_array % (int)(EM_fields_array_length/10) == 0)

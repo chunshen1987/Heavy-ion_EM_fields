@@ -11,6 +11,7 @@ class EM_fields
 {
    private:
 
+      int mode;
       int initialization_status;
       ParameterReader *paraRdr;
 
@@ -47,6 +48,7 @@ class EM_fields
       EM_fields(ParameterReader* paraRdr_in);
       ~EM_fields();
 
+      void set_transverse_grid_points(double tau_local, double eta_local);
       void read_in_densities(string path);
       void read_in_spectators_density(string filename_1, string filename_2);
       void read_in_participant_density(string filename_1, string filename_2);

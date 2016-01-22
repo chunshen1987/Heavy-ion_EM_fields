@@ -58,6 +58,8 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
             participant_density_2[i][j] = 0.0;
         }
     }
+
+    read_in_densities("./results");
     initialization_status = 1;
 }
 
@@ -94,19 +96,66 @@ EM_fields::~EM_fields()
     return;
 }
 
+void EM_fields::read_in_densities(string path)
+{
+    // spectators
+    ostringstream spectator_1_filename;
+    spectator_1_filename << path 
+                         << "/spectator_density_A_fromSd_order_2.dat";
+    ostringstream spectator_2_filename;
+    spectator_2_filename << path 
+                         << "/spectator_density_B_fromSd_order_2.dat";
+    read_in_spectators_density(spectator_1_filename.str(), 
+                               spectator_2_filename.str());
+    // participants
+    ostringstream participant_1_filename;
+    participant_1_filename << path 
+                           << "/nuclear_thickness_TA_fromSd_order_2.dat";
+    ostringstream participant_2_filename;
+    participant_2_filename << path 
+                           << "/nuclear_thickness_TB_fromSd_order_2.dat";
+    read_in_participant_density(participant_1_filename.str(), 
+                                participant_2_filename.str());
+}
+
 void EM_fields::read_in_spectators_density(string filename_1, string filename_2)
 {
+    ifstream spec1(filename_1.c_str());
+    ifstream spec2(filename_2.c_str());
 
+    for(int i = 0; i < nucleon_density_grid_size; i++)
+    {
+        for(int j = 0; j < nucleon_density_grid_size; j++)
+        {
+            spec1 >> spectator_density_1[i][j];
+            spec2 >> spectator_density_2[i][j];
+        }
+    }
+
+    spec1.close();
+    spec2.close();
 }
 
 void EM_fields::read_in_participant_density(string filename_1, string filename_2)
 {
+    ifstream part1(filename_1.c_str());
+    ifstream part2(filename_2.c_str());
 
+    for(int i = 0; i < nucleon_density_grid_size; i++)
+    {
+        for(int j = 0; j < nucleon_density_grid_size; j++)
+        {
+            part1 >> participant_density_1[i][j];
+            part2 >> participant_density_2[i][j];
+        }
+    }
+
+    part1.close();
+    part2.close();
 }
 
 void EM_fields::read_in_freezeout_surface_points(string filename)
 {
-    
     EM_fields_array_length = x.size();
 }
 

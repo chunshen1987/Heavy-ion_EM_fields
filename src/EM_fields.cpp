@@ -132,6 +132,7 @@ void EM_fields::read_in_densities(string path)
 
 void EM_fields::read_in_spectators_density(string filename_1, string filename_2)
 {
+    cout << "read in spectator density ...";
     ifstream spec1(filename_1.c_str());
     ifstream spec2(filename_2.c_str());
 
@@ -146,10 +147,12 @@ void EM_fields::read_in_spectators_density(string filename_1, string filename_2)
 
     spec1.close();
     spec2.close();
+    cout << " done!" << endl;
 }
 
 void EM_fields::read_in_participant_density(string filename_1, string filename_2)
 {
+    cout << "read in participant density ...";
     ifstream part1(filename_1.c_str());
     ifstream part2(filename_2.c_str());
 
@@ -164,13 +167,14 @@ void EM_fields::read_in_participant_density(string filename_1, string filename_2
 
     part1.close();
     part2.close();
+    cout << " done!" << endl;
 }
 
 void EM_fields::read_in_freezeout_surface_points(string filename)
 {
     ifstream FOsurf(filename.c_str());
 
-    cout << "read in freeze-out surface points ..." << endl;
+    cout << "read in freeze-out surface points ...";
     // read in freeze-out surface positions
     double dummy;
     FOsurf >> dummy;
@@ -188,9 +192,10 @@ void EM_fields::read_in_freezeout_surface_points(string filename)
         }
         FOsurf >> dummy;
     }
+    FOsurf.close();
+    cout << " done!" << endl;
     EM_fields_array_length = x.size();
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
-    FOsurf.close();
 }
 
 void EM_fields::calculate_EM_fields()
@@ -281,6 +286,11 @@ void EM_fields::calculate_EM_fields()
 void EM_fields::output_EM_fields(string filename)
 {
    ofstream output_file(filename.c_str());
+
+   // write a header first
+   output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
+               << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
+               << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
    for(int i = 0; i < EM_fields_array_length; i++)
    {
       output_file << scientific << setprecision(8) << setw(15)  

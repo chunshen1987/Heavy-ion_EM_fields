@@ -164,6 +164,9 @@ void ParameterReader::echo()
 */
 {
   if (names->size()==0) return;
+  cout << "----------------------------------------------------------" << endl;
+  cout << "-- Input parameter list:" << endl;
   for (long ii=0; ii<names->size(); ii++) cout << (*names)[ii] << "=" << (*values)[ii] << "  ";
   cout << endl;
+  cout << "----------------------------------------------------------" << endl;
 }

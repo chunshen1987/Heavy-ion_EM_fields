@@ -19,6 +19,8 @@ class EM_fields
       // matrices stored the charge density in the transverse plane from the 
       // two colliding nuclei, spectators and participants
       double *nucleon_density_grid_x_array, *nucleon_density_grid_y_array;
+      int n_eta;
+      double* eta_grid;
       double **spectator_density_1, **spectator_density_2;
       double **participant_density_1, **participant_density_2;
 

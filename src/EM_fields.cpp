@@ -59,6 +59,14 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
         }
     }
 
+    n_eta = paraRdr->getVal("n_eta");
+    eta_grid = new double [n_eta];
+    double deta = 2.*beam_rapidity/(n_eta - 1.);
+    for(int i = 0; i < n_eta; i++)
+    {
+        eta_grid[i] = - beam_rapidity + i*deta;
+    }
+
     read_in_densities("./results");
     read_in_freezeout_surface_points("./results/surface.dat");
     
@@ -82,6 +90,8 @@ EM_fields::~EM_fields()
         delete[] participant_density_2;
         delete[] nucleon_density_grid_x_array;
         delete[] nucleon_density_grid_y_array;
+
+        delete[] eta_grid;
 
         E_x.clear();
         E_y.clear();
@@ -168,11 +178,14 @@ void EM_fields::read_in_freezeout_surface_points(string filename)
     while(!FOsurf.eof())
     {
         FOsurf >> tau_local >> x_local >> y_local >> dummy >> dummy >> dummy;
-        eta_local = 0.0;
-        tau.push_back(tau_local);
-        x.push_back(x_local);
-        y.push_back(y_local);
-        eta.push_back(eta_local);
+        for(int i = 0; i < n_eta; i++)
+        {
+            eta_local = eta_grid[i];
+            tau.push_back(tau_local);
+            x.push_back(x_local);
+            y.push_back(y_local);
+            eta.push_back(eta_local);
+        }
         FOsurf >> dummy;
     }
     EM_fields_array_length = x.size();

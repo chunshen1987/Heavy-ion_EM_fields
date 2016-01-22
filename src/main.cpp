@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 
     EM_fields testEM(&paraRdr);
     testEM.calculate_EM_fields();
+    testEM.output_EM_fields("./results/EM_fields.dat");
 
     sw.toc();
     cout << "Totally takes " << sw.takeTime() << " sec." << endl;

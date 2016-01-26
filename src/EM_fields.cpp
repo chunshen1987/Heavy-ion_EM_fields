@@ -25,7 +25,6 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
     double beam_rapidity = atanh(beta);
     spectator_rap = beam_rapidity;
     //cout << "spectator rapidity = " << spectator_rap << endl;
-    participant_rap = 0.0;
 
     nucleon_density_grid_size = paraRdr->getVal("nucleon_density_grid_size");
     nucleon_density_grid_dx = paraRdr->getVal("nucleon_density_grid_dx");
@@ -81,6 +80,14 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in)
         set_transverse_grid_points(0.2, 0.0);
     else if(mode == 1)
         read_in_freezeout_surface_points("./results/surface.dat");
+    else if (mode == 2)
+        set_tau_grid_points(0.0, 0.0, 0.0);
+    else
+    {
+        cout << "EM_fields:: Error: unrecognize mode! "
+             << "mode = " << mode << endl;
+        exit(1);
+    }
     
     initialization_status = 1;
 }
@@ -180,6 +187,25 @@ void EM_fields::read_in_participant_density(string filename_1, string filename_2
     part1.close();
     part2.close();
     cout << " done!" << endl;
+}
+
+void EM_fields::set_tau_grid_points(double x_local, double y_local, 
+                                    double eta_local)
+{
+    double EM_fields_grid_size = 15.0;
+    double EM_fields_grid_dtau = 0.01;
+
+    int number_of_points = (int)(EM_fields_grid_size/EM_fields_grid_dtau) + 1;
+    for(int i = 0; i < number_of_points; i++)
+    {
+        double tau_local = 0.0 + i*EM_fields_grid_dtau;
+        tau.push_back(tau_local);
+        x.push_back(x_local);
+        y.push_back(y_local);
+        eta.push_back(eta_local);
+    }
+    EM_fields_array_length = tau.size();
+    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
 void EM_fields::set_transverse_grid_points(double tau_local, double eta_local)
@@ -298,16 +324,16 @@ void EM_fields::calculate_EM_fields()
                 temp_sum_By_spectator += By_spectator_integrand;
             }
         }
-        E_x.push_back(unit_convert*charge_fraction*e_sq*(
+        E_x.push_back(unit_convert*charge_fraction*alpha_EM*(
                         cosh_spectator_rap*temp_sum_Ex_spectator)*dx_sq);
-        E_y.push_back(unit_convert*charge_fraction*e_sq*(
+        E_y.push_back(unit_convert*charge_fraction*alpha_EM*(
                         cosh_spectator_rap*temp_sum_Ey_spectator)*dx_sq);
-        E_z.push_back(unit_convert*charge_fraction*e_sq*(
+        E_z.push_back(unit_convert*charge_fraction*alpha_EM*(
                         temp_sum_Ez_spectator)*dx_sq);
-        B_x.push_back(unit_convert*charge_fraction*e_sq*(
-                        sinh_spectator_rap*temp_sum_Bx_spectator)*dx_sq);
-        B_y.push_back(unit_convert*charge_fraction*e_sq*(
-                        (-sinh_spectator_rap)*temp_sum_By_spectator)*dx_sq);
+        B_x.push_back(unit_convert*charge_fraction*alpha_EM*(
+                        (-sinh_spectator_rap)*temp_sum_Bx_spectator)*dx_sq);
+        B_y.push_back(unit_convert*charge_fraction*alpha_EM*(
+                        sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
         B_z.push_back(0.0);
         
         if(i_array % (int)(EM_fields_array_length/10) == 0)

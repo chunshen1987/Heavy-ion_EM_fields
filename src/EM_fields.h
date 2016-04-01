@@ -9,6 +9,17 @@
 
 using namespace std;
 
+struct vector3 {
+    double x, y, z;
+};
+
+struct fluidCell {
+    double tau, x, y, eta;
+    vector3 beta;
+    vector3 E_lab, B_lab;
+    vector3 delta_v;
+};
+
 class EM_fields {
  private:
     int mode;
@@ -25,20 +36,9 @@ class EM_fields {
     double **spectator_density_1, **spectator_density_2;
     double **participant_density_1, **participant_density_2;
 
-    int EM_fields_array_length;
-    // The values that stored in the following arraies are e*EM_fields
-    vector<double> E_x;
-    vector<double> E_y;
-    vector<double> E_z;
-    vector<double> B_x;
-    vector<double> B_y;
-    vector<double> B_z;
-
     // arraies for the space-time points of the EM fields
-    vector<double> tau;
-    vector<double> x;
-    vector<double> y;
-    vector<double> eta;
+    int EM_fields_array_length;
+    vector<fluidCell> cell_list;
 
     double charge_fraction;
     double spectator_rap;
@@ -54,7 +54,11 @@ class EM_fields {
     void read_in_participant_density(string filename_1, string filename_2);
     void read_in_freezeout_surface_points(string filename);
     void calculate_EM_fields();
+    void calculate_charge_drift_velocity();
     void output_EM_fields(string filename);
+    void Lorentz_boost_EM_fields(double *E_lab, double *B_lab, double *beta,
+                                 double *E_prime, double *B_prime);
+    void cross_product(double *a, double *b, double *c);
 };
 
 #endif  // SRC_EM_FIELDS_H_

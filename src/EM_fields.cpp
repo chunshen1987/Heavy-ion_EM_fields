@@ -105,17 +105,7 @@ EM_fields::~EM_fields() {
 
         delete[] eta_grid;
 
-        E_x.clear();
-        E_y.clear();
-        E_z.clear();
-        B_x.clear();
-        B_y.clear();
-        B_z.clear();
-
-        tau.clear();
-        x.clear();
-        y.clear();
-        eta.clear();
+        cell_list.clear();
     }
     return;
 }
@@ -188,12 +178,14 @@ void EM_fields::set_tau_grid_points(double x_local, double y_local,
                 static_cast<int>(EM_fields_grid_size/EM_fields_grid_dtau) + 1;
     for (int i = 0; i < number_of_points; i++) {
         double tau_local = 0.0 + i*EM_fields_grid_dtau;
-        tau.push_back(tau_local);
-        x.push_back(x_local);
-        y.push_back(y_local);
-        eta.push_back(eta_local);
+        fluidCell cell_local;
+        cell_local.tau = tau_local;
+        cell_local.x = x_local;
+        cell_local.y = y_local;
+        cell_local.eta = eta_local;
+        cell_list.push_back(cell_local);
     }
-    EM_fields_array_length = tau.size();
+    EM_fields_array_length = cell_list.size();
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
@@ -207,51 +199,55 @@ void EM_fields::set_transverse_grid_points(double tau_local, double eta_local) {
         double x_local = - EM_fields_grid_size/2. + i*EM_fields_grid_dx;
         for (int j = 0; j < number_of_points; j++) {
             double y_local = - EM_fields_grid_size/2. + j*EM_fields_grid_dx;
-            x.push_back(x_local);
-            y.push_back(y_local);
-            tau.push_back(tau_local);
-            eta.push_back(eta_local);
+            fluidCell cell_local;
+            cell_local.tau = tau_local;
+            cell_local.x = x_local;
+            cell_local.y = y_local;
+            cell_local.eta = eta_local;
+            cell_list.push_back(cell_local);
         }
     }
-    EM_fields_array_length = x.size();
+    EM_fields_array_length = cell_list.size();
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
 void EM_fields::read_in_freezeout_surface_points(string filename) {
+    // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename.c_str());
-
     cout << "read in freeze-out surface points ...";
     // read in freeze-out surface positions
     double dummy;
-    double tau_local, x_local, y_local, eta_local;
+    double tau_local, x_local, y_local;
     FOsurf >> dummy;
     while (!FOsurf.eof()) {
         FOsurf >> tau_local >> x_local >> y_local >> dummy >> dummy >> dummy;
         for (int i = 0; i < n_eta; i++) {
-            eta_local = eta_grid[i];
-            tau.push_back(tau_local);
-            x.push_back(x_local);
-            y.push_back(y_local);
-            eta.push_back(eta_local);
+            fluidCell cell_local;
+            cell_local.eta = eta_grid[i];
+            cell_local.tau = tau_local;
+            cell_local.x = x_local;
+            cell_local.y = y_local;
+            cell_list.push_back(cell_local);
         }
         FOsurf >> dummy;
     }
     FOsurf.close();
     cout << " done!" << endl;
-    EM_fields_array_length = x.size();
+    EM_fields_array_length = cell_list.size();
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
 void EM_fields::calculate_EM_fields() {
+    // this function calculates E and B fields
     double cosh_spectator_rap = cosh(spectator_rap);
     double sinh_spectator_rap = sinh(spectator_rap);
 
     double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
     for (int i_array = 0; i_array < EM_fields_array_length; i_array++) {
-        double field_x = x[i_array];
-        double field_y = y[i_array];
-        double field_tau = tau[i_array];
-        double field_eta = eta[i_array];
+        double field_x = cell_list[i_array].x;
+        double field_y = cell_list[i_array].y;
+        double field_tau = cell_list[i_array].tau;
+        double field_eta = cell_list[i_array].eta;
         double temp_sum_Ex_spectator = 0.0e0;
         double temp_sum_Ey_spectator = 0.0e0;
         double temp_sum_Ez_spectator = 0.0e0;
@@ -260,14 +256,15 @@ void EM_fields::calculate_EM_fields() {
 
         double z_local_spectator_1 = field_tau*sinh(field_eta - spectator_rap);
         double z_local_spectator_2 = field_tau*sinh(field_eta + spectator_rap);
-        double z_local_spectator_1_sq = z_local_spectator_1*z_local_spectator_1;
-        double z_local_spectator_2_sq = z_local_spectator_2*z_local_spectator_2;
+        double z_local_spectator_1_sq = 
+                                    z_local_spectator_1*z_local_spectator_1;
+        double z_local_spectator_2_sq =
+                                    z_local_spectator_2*z_local_spectator_2;
 
         for (int i = 0; i < nucleon_density_grid_size; i++) {
             double grid_x = nucleon_density_grid_x_array[i];
             for (int j = 0; j < nucleon_density_grid_size; j++) {
                 double grid_y = nucleon_density_grid_y_array[j];
-
                 double x_local = field_x - grid_x;
                 double y_local = field_y - grid_y;
                 double r_perp_local_sq = x_local*x_local + y_local*y_local;
@@ -302,17 +299,22 @@ void EM_fields::calculate_EM_fields() {
                 temp_sum_By_spectator += By_spectator_integrand;
             }
         }
-        E_x.push_back(unit_convert*charge_fraction*alpha_EM*(
-                        cosh_spectator_rap*temp_sum_Ex_spectator)*dx_sq);
-        E_y.push_back(unit_convert*charge_fraction*alpha_EM*(
-                        cosh_spectator_rap*temp_sum_Ey_spectator)*dx_sq);
-        E_z.push_back(unit_convert*charge_fraction*alpha_EM*(
-                        temp_sum_Ez_spectator)*dx_sq);
-        B_x.push_back(unit_convert*charge_fraction*alpha_EM*(
-                        (-sinh_spectator_rap)*temp_sum_Bx_spectator)*dx_sq);
-        B_y.push_back(unit_convert*charge_fraction*alpha_EM*(
-                        sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
-        B_z.push_back(0.0);
+        cell_list[i_array].E_lab.x = (
+            unit_convert*charge_fraction*alpha_EM
+            *cosh_spectator_rap*temp_sum_Ex_spectator*dx_sq);
+        cell_list[i_array].E_lab.y = (
+            unit_convert*charge_fraction*alpha_EM
+            *cosh_spectator_rap*temp_sum_Ey_spectator*dx_sq);
+        cell_list[i_array].E_lab.z = (
+            unit_convert*charge_fraction*alpha_EM*temp_sum_Ez_spectator*dx_sq);
+        cell_list[i_array].B_lab.x = (
+            unit_convert*charge_fraction*alpha_EM
+            *((-sinh_spectator_rap)*temp_sum_Bx_spectator)*dx_sq);
+        cell_list[i_array].B_lab.y = (
+            unit_convert*charge_fraction*alpha_EM
+            *(sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
+        cell_list[i_array].B_lab.z = 0.0;
+
         if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
             cout << "computing EM fields: " << setprecision(3)
                  << (static_cast<double>(i_array)
@@ -324,19 +326,117 @@ void EM_fields::calculate_EM_fields() {
 }
 
 void EM_fields::output_EM_fields(string filename) {
+    // this function outputs the computed E and B fields to a text file
     ofstream output_file(filename.c_str());
-
     // write a header first
     output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
                 << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
                 << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
     for (int i = 0; i < EM_fields_array_length; i++) {
         output_file << scientific << setprecision(8) << setw(15)
-                    << tau[i] << "   " << x[i] << "   " << y[i] << "   "
-                    << eta[i] << "   "
-                    << E_x[i] << "   " << E_y[i] << "   " << E_z[i] << "   "
-                    << B_x[i] << "   " << B_y[i] << "   " << B_z[i] << endl;
+                    << cell_list[i].tau << "   " << cell_list[i].x << "   "
+                    << cell_list[i].y << "   " << cell_list[i].eta << "   "
+                    << cell_list[i].E_lab.x << "   "
+                    << cell_list[i].E_lab.y << "   "
+                    << cell_list[i].E_lab.z << "   "
+                    << cell_list[i].B_lab.x << "   "
+                    << cell_list[i].B_lab.y << "   "
+                    << cell_list[i].B_lab.z << endl;
     }
     output_file.close();
     return;
+}
+
+void EM_fields::calculate_charge_drift_velocity() {
+    // this function calculates the drift velocity of the fluid cell
+    // included by the local EM fields
+
+    cout << "calculating the charge drifiting velocity ... " << endl;
+
+    // initialization
+    double *E_lab = new double[3];
+    double *B_lab = new double[3];
+    double *beta = new double[3];
+    double *E_lrf = new double[3];
+    double *B_lrf = new double[3];
+
+    // loop over evey fluid cell
+    for (int i = 0; i < EM_fields_array_length; i++) {
+        // we first boost the EM fields to local rest frame of the fluid cell
+        E_lab[0] = cell_list[i].E_lab.x;
+        E_lab[1] = cell_list[i].E_lab.y;
+        E_lab[2] = cell_list[i].E_lab.z;
+        B_lab[0] = cell_list[i].B_lab.x;
+        B_lab[1] = cell_list[i].B_lab.y;
+        B_lab[2] = cell_list[i].B_lab.z;
+        beta[0] = cell_list[i].beta.x;
+        beta[1] = cell_list[i].beta.y;
+        beta[2] = cell_list[i].beta.z;
+        Lorentz_boost_EM_fields(E_lab, B_lab, beta, E_lrf, B_lrf);
+
+        // we calculate the drifting velocity in the local rest frame
+        double mu_m = 1.0;
+        double q = 1.0;
+        double qEx = q*E_lrf[0];
+        double qEy = q*E_lrf[1];
+        double qEz = q*E_lrf[2];
+        double qBx = q*B_lrf[0];
+        double qBy = q*B_lrf[1];
+        double qBz = q*B_lrf[2];
+        double denorm = (
+                1./(mu_m*(qBx*qBx + qBy*qBy + qBz*qBz) + mu_m*mu_m*mu_m));
+        double delta_v_x = (qEz*(qBx*qBz - qBy*mu_m) + qEy*(qBx*qBy + qBz*mu_m)
+                            + qEx*(qBx*qBx + mu_m*mu_m))*denorm;
+        double delta_v_y = (qEz*(qBy*qBz + qBx*mu_m) + qEx*(qBx*qBy - qBz*mu_m)
+                            + qEy*(qBy*qBy + mu_m*mu_m))*denorm;
+        double delta_v_z = (qEy*(qBy*qBz - qBx*mu_m) + qEx*(qBx*qBz + qBy*mu_m)
+                            + qEz*(qBz*qBz + mu_m*mu_m))*denorm;
+        // finally we boost the delta v back to longitudinal comving frame
+        for (int i = 0; i < 3; i++) {  // prepare the velocity
+            beta[i] = - beta[i];
+        }
+
+        cell_list[i].delta_v.x = delta_v_x;
+        cell_list[i].delta_v.y = delta_v_y;
+        cell_list[i].delta_v.z = delta_v_z;
+    }
+
+    // clean up
+    delete [] E_lab;
+    delete [] B_lab;
+    delete [] E_lrf;
+    delete [] B_lrf;
+    delete [] beta;
+}
+
+void EM_fields::Lorentz_boost_EM_fields(double *E_lab, double *B_lab,
+        double *beta, double *E_prime, double *B_prime) {
+    // this function perform Lorentz boost for E_lab and B_lab fields
+    // to a frame with velocity v = beta;
+    // the results are stored in E_prime and B_prime vectors
+    double beta_dot_E = 0.0;
+    double beta_dot_B = 0.0;
+    for (int i = 0; i < 3; i++) {
+        beta_dot_E += beta[i]*E_lab[i];
+        beta_dot_B += beta[i]*B_lab[i];
+    }
+    double gamma =
+        1./sqrt(1. - beta[0]*beta[0] - beta[1]*beta[1] - beta[2]*beta[2]);
+    double beta_cross_E[3], beta_cross_B[3];
+    cross_product(beta, E_lab, beta_cross_E);
+    cross_product(beta, B_lab, beta_cross_B);
+    double gamma_factor = gamma*gamma/(gamma + 1.);
+    for (int i = 0; i < 3; i++) {
+        E_prime[i] = (gamma*(E_lab[i] + beta_cross_B[i])
+                      - gamma_factor*beta_dot_E*beta[i]);
+        B_prime[i] = (gamma*(B_lab[i] - beta_cross_E[i])
+                      - gamma_factor*beta_dot_B*beta[i]);
+    }
+}
+
+void EM_fields::cross_product(double *a, double *b, double *c) {
+    // this function calculates c = a x b
+    c[0] = a[1]*b[2] - a[2]*b[1];
+    c[1] = a[2]*b[0] - a[0]*b[2];
+    c[2] = a[0]*b[1] - a[1]*b[0];
 }

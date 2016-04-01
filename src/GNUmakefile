@@ -25,9 +25,9 @@ MAIN		=	EM_fields.e
 endif
 
 SRC		=	main.cpp ParameterReader.cpp \
-			EM_fields.cpp arsenal.cpp
+			EM_fields.cpp
 
-INC		= 	EM_fields.h Stopwatch.h ParameterReader.h arsenal.h \
+INC		= 	EM_fields.h Stopwatch.h ParameterReader.h \
                   parameter.h
 
 # -------------------------------------------------
@@ -76,5 +76,4 @@ install:	$(TARGET)
 # --------------- Dependencies -------------------
 ./main.cpp: EM_fields.h parameter.h Stopwatch.h ParameterReader.h
 ./EM_fields.cpp: EM_fields.h ParameterReader.h parameter.h 
-./ParameterReader.cpp: ParameterReader.h arsenal.h
-./arsenal.cpp: arsenal.h
+./ParameterReader.cpp: ParameterReader.h

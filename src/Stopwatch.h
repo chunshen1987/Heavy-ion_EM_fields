@@ -1,20 +1,20 @@
-#ifndef Stopwatch_header
-#define Stopwatch_header
+// Copyright 2016 Chun Shen
+#ifndef SRC_STOPWATCH_H_
+#define SRC_STOPWATCH_H_
 
 #include <ctime>
 
-class Stopwatch
-{
-  private:
+class Stopwatch {
+ private:
     time_t start, end;
-  public:
-    Stopwatch() {start=clock(); end=0;}
-    void tic() {start=clock();}
-    void toc() {end=clock();}
-    double takeTime() {return ((double)(end - start)) / CLOCKS_PER_SEC;}
+ public:
+    Stopwatch() {start = clock(); end = 0;}
+    void tic() {start = clock();}
+    void toc() {end = clock();}
+    double takeTime() {return(static_cast<double>(end - start))/CLOCKS_PER_SEC;}
 };
 
-#endif
+#endif  // SRC_STOPWATCH_H_
 
 /*-----------------------------------------------------------------------
   Usage:

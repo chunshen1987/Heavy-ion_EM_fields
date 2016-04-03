@@ -13,16 +13,21 @@ struct vector3 {
     double x, y, z;
 };
 
-struct fluidCell {
+struct vector4 {
     double tau, x, y, eta;
-    vector3 beta;
-    vector3 E_lab, B_lab;
-    vector3 delta_v;
+};
+
+struct fluidCell {
+    double tau, x, y, eta;      // spatial poision of the fluid cell
+    vector3 beta;               // flow velocity of the fluid cell
+    vector3 E_lab, B_lab;       // E and B fields in the lab frame
+    vector4 drift_u;            // drifting 4 velocity induced by EM fields
 };
 
 class EM_fields {
  private:
     int mode;
+    int turn_on_bulk;
     int initialization_status;
     ParameterReader *paraRdr;
 
@@ -33,6 +38,7 @@ class EM_fields {
     double *nucleon_density_grid_x_array, *nucleon_density_grid_y_array;
     int n_eta;
     double* eta_grid;
+    double *sinh_eta_array, *cosh_eta_array;
     double **spectator_density_1, **spectator_density_2;
     double **participant_density_1, **participant_density_2;
 
@@ -52,10 +58,13 @@ class EM_fields {
     void read_in_densities(string path);
     void read_in_spectators_density(string filename_1, string filename_2);
     void read_in_participant_density(string filename_1, string filename_2);
-    void read_in_freezeout_surface_points(string filename);
+    void read_in_freezeout_surface_points_VISH2p1(string filename1,
+                                                  string filename2);
     void calculate_EM_fields();
-    void calculate_charge_drift_velocity();
+    void calculate_charge_drifting_velocity();
     void output_EM_fields(string filename);
+    void output_surface_file_with_drifting_velocity(string filename);
+    void lorentz_transform_vector_in_place(double *u_mu, double *v);
     void Lorentz_boost_EM_fields(double *E_lab, double *B_lab, double *beta,
                                  double *E_prime, double *B_prime);
     void cross_product(double *a, double *b, double *c);

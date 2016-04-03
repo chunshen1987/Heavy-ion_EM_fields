@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
 
     EM_fields testEM(&paraRdr);
     testEM.calculate_EM_fields();
+    testEM.calculate_charge_drifting_velocity();
     testEM.output_EM_fields("./results/EM_fields.dat");
 
     sw.toc();

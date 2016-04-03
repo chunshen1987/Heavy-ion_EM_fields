@@ -1,6 +1,8 @@
-mode = 1                  # 0: compute EM fields in the transverse plane
+mode = 2                  # 0: compute EM fields in the transverse plane
                           # 1: compute EM fields at the freeze-out surface
                           # 2: compute EM fields as a function of proper time
+turn_on_bulk = 0          # whether the hypersurface file from hydro
+                          # includes bulk pressure
 
 atomic_number = 208       # the atomic number of the collding nucleus
 number_of_proton = 82     # number of protons inside the nucleus

@@ -88,7 +88,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     } else if (mode == 2) {
         set_tau_grid_points(0.0, 0.0, 0.0);
     } else if (mode == 3) {
-        read_in_freezeout_surface_points_MUSIC_boost_invariant(
+        read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                     "./results/surface.dat");
     } else {
         cout << "EM_fields:: Error: unrecognize mode! "
@@ -235,19 +235,23 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     string input;
     double tau_local, x_local, y_local;
     double vx_local, vy_local;
+    double T_local;
     FOsurf >> dummy;
     while (!FOsurf.eof()) {
         FOsurf >> tau_local >> x_local >> y_local >> dummy >> dummy >> dummy;
         getline(decdat, input, '\n');
         stringstream ss(input);
         ss >> dummy >> dummy >> dummy >> dummy;     // skip tau and da_i
-        ss >> vx_local >> vy_local;                 // the rest is discharded
+        ss >> vx_local >> vy_local;                 // read in vx and vy
+        ss >> dummy >> dummy >> T_local;            // read in temperature
+        // the rest is discharded
         double u_tau_local = 1./sqrt(1. - vx_local*vx_local
                                      - vy_local*vy_local);
         double u_x_local = u_tau_local*vx_local;
         double u_y_local = u_tau_local*vy_local;
         for (int i = 0; i < n_eta; i++) {
             fluidCell cell_local;
+            cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
             cell_local.eta = eta_grid[i];
             cell_local.tau = tau_local;
             cell_local.x = x_local;
@@ -272,11 +276,11 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
-void EM_fields::read_in_freezeout_surface_points_MUSIC_boost_invariant(
+void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename) {
     // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename.c_str());
-    cout << "read in freeze-out surface points from MUSIC boost invariant "
+    cout << "read in freeze-out surface points from VISH2+1 boost invariant "
          << "outputs ...";
     // read in freeze-out surface positions
     double dummy;
@@ -566,7 +570,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
         Lorentz_boost_EM_fields(E_lab, B_lab, beta, E_lrf, B_lrf);
 
         // we calculate the drifting velocity in the local rest frame
-        double mu_m = 1.0;
+        double mu_m = cell_list[i].mu_m;
         double q = 1.0;
         double qEx = q*E_lrf[0];
         double qEy = q*E_lrf[1];

@@ -18,6 +18,7 @@ struct vector4 {
 };
 
 struct fluidCell {
+    double mu_m;                // the effective mass of the cell [GeV^2]
     double tau, x, y, eta;      // spatial poision of the fluid cell
     vector3 beta;               // flow velocity of the fluid cell
     vector3 E_lab, B_lab;       // E and B fields in the lab frame
@@ -60,6 +61,8 @@ class EM_fields {
     void read_in_participant_density(string filename_1, string filename_2);
     void read_in_freezeout_surface_points_VISH2p1(string filename1,
                                                   string filename2);
+    void read_in_freezeout_surface_points_MUSIC_boost_invariant(
+                                                            string filename);
     void calculate_EM_fields();
     void calculate_charge_drifting_velocity();
     void output_EM_fields(string filename);

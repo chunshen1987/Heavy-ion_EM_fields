@@ -87,6 +87,9 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
                                                  "./results/decdat2.dat");
     } else if (mode == 2) {
         set_tau_grid_points(0.0, 0.0, 0.0);
+    } else if (mode == 3) {
+        read_in_freezeout_surface_points_MUSIC_boost_invariant(
+                                                    "./results/surface.dat");
     } else {
         cout << "EM_fields:: Error: unrecognize mode! "
              << "mode = " << mode << endl;
@@ -269,6 +272,52 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
 }
 
+void EM_fields::read_in_freezeout_surface_points_MUSIC_boost_invariant(
+                                                            string filename) {
+    // this function reads in the freeze out surface points from a text file
+    ifstream FOsurf(filename.c_str());
+    cout << "read in freeze-out surface points from MUSIC boost invariant "
+         << "outputs ...";
+    // read in freeze-out surface positions
+    double dummy;
+    string input;
+    double tau_local, x_local, y_local;
+    double u_tau_local, u_x_local, u_y_local;
+    double T_local;
+    while (!FOsurf.eof()) {
+        getline(FOsurf, input, '\n');
+        stringstream ss(input);
+        FOsurf >> tau_local >> x_local >> y_local >> dummy;  // eta_s = 0.0
+        ss >> dummy >> dummy >> dummy >> dummy;   // skip surface vector da_mu
+        // read in flow velocity
+        ss >> u_tau_local >> u_x_local >> u_y_local >> dummy;  // u_eta = 0.0
+        ss >> dummy >> dummy >> T_local;
+        // the rest information is discarded
+        for (int i = 0; i < n_eta; i++) {
+            fluidCell cell_local;
+            cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
+            cell_local.eta = eta_grid[i];
+            cell_local.tau = tau_local;
+            cell_local.x = x_local;
+            cell_local.y = y_local;
+
+            // compute fluid velocity in t-xyz coordinate
+            double u_t_local = u_tau_local*cosh_eta_array[i];
+            double u_z_local = u_tau_local*sinh_eta_array[i];
+            cell_local.beta.x = u_x_local/u_t_local;
+            cell_local.beta.y = u_y_local/u_t_local;
+            cell_local.beta.z = u_z_local/u_t_local;
+
+            // push back the fluid cell into the cell list
+            cell_list.push_back(cell_local);
+        }
+    }
+    FOsurf.close();
+    cout << " done!" << endl;
+    EM_fields_array_length = cell_list.size();
+    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+}
+
 void EM_fields::calculate_EM_fields() {
     // this function calculates E and B fields
     double cosh_spectator_rap = cosh(spectator_rap);
@@ -414,6 +463,52 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             double u_tau = (u_t*cosh(cell_list[i].eta)
                             - u_z*sinh(cell_list[i].eta));
             double u_eta = 0.0;            // for boost-invariant medium
+            output_file << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].tau << "  " << cell_list[i].x << "  "
+                        << cell_list[i].y << "  " << cell_list[i].eta << "  "
+                        << da0 << "  " << da1 << "  " << da2 << "  "
+                        << da3 << "  "
+                        << u_tau << "  " << u_x << "  " << u_y << "  "
+                        << u_eta << "  "
+                        << Edec << "  " << Tdec << "  " << muB << "  "
+                        << e_plus_P_over_T << "  "
+                        << pi00 << "  " << pi01 << "  " << pi02 << "  "
+                        << pi03 << "  " << pi11 << "  " << pi12 << "  "
+                        << pi13 << "  " << pi22 << "  " << pi23 << "  "
+                        << pi33 << "  ";
+            if (turn_on_bulk == 1)
+                output_file << scientific << setprecision(8) << setw(15)
+                            << bulkPi << "  ";
+            output_file << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].drift_u.tau << "  "
+                        << cell_list[i].drift_u.x << "  "
+                        << cell_list[i].drift_u.y << "  "
+                        << cell_list[i].drift_u.eta;
+            output_file << endl;
+        }
+        decdat.close();
+    } else if (mode == 3) {
+        ifstream decdat("./results/surface.dat");
+        string input;
+        double dummy;
+        double da0, da1, da2, da3;
+        double u_tau, u_x, u_y, u_eta;
+        double Edec, Tdec, muB, Pdec;
+        double pi00, pi01, pi02, pi03, pi11, pi12, pi13, pi22, pi23, pi33;
+        double bulkPi;
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            getline(decdat, input, '\n');
+            stringstream ss(input);
+            // pipe cell position to dummy
+            ss >> dummy >> dummy >> dummy >> dummy;
+            ss >> da0 >> da1 >> da2 >> da3;          // read in da_mu
+            ss >> u_tau >> u_x >> u_y >> u_eta;      // read in u^\mu
+            ss >> Edec >> dummy >> Tdec >> muB >> dummy >> Pdec;
+            double e_plus_P_over_T = (Edec + Pdec)/Tdec;
+            ss >> pi00 >> pi01 >> pi02 >> pi03 >> pi11 >> pi12 >> pi13
+               >> pi22 >> pi23 >> pi33;
+            ss >> bulkPi;
+
             output_file << scientific << setprecision(8) << setw(15)
                         << cell_list[i].tau << "  " << cell_list[i].x << "  "
                         << cell_list[i].y << "  " << cell_list[i].eta << "  "

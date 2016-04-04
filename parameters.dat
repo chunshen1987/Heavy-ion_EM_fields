@@ -15,4 +15,4 @@ nucleon_density_grid_dx = 0.1    # [fm] the grid spacing of the nucleon density
 
 n_eta = 5    # number of points along eta direction 
              # from -beam_rapidity to +beam_rapidity
-verbose_level = 2         # control the mount of outputs on the screen
+verbose_level = 5         # control the mount of outputs on the screen

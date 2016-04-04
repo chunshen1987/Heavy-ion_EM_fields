@@ -22,7 +22,8 @@ struct fluidCell {
     double tau, x, y, eta;      // spatial poision of the fluid cell
     vector3 beta;               // flow velocity of the fluid cell
     vector3 E_lab, B_lab;       // E and B fields in the lab frame
-    vector4 drift_u;            // drifting 4 velocity induced by EM fields
+    vector4 drift_u_plus;       // drifting 4 velocity induced by EM fields
+    vector4 drift_u_minus;
 };
 
 class EM_fields {

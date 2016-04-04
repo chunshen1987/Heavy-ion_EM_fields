@@ -127,13 +127,11 @@ EM_fields::~EM_fields() {
 void EM_fields::read_in_densities(string path) {
     // spectators
     ostringstream spectator_1_filename;
-    spectator_1_filename << path << "/spectator_density_A_disk.dat";
-    // spectator_1_filename << path
-    //                      << "/spectator_density_A_fromSd_order_2.dat";
+    spectator_1_filename << path
+                         << "/spectator_density_A_fromSd_order_2.dat";
     ostringstream spectator_2_filename;
-    spectator_2_filename << path << "/spectator_density_B_disk.dat";
-    // spectator_2_filename << path
-    //                      << "/spectator_density_B_fromSd_order_2.dat";
+    spectator_2_filename << path
+                         << "/spectator_density_B_fromSd_order_2.dat";
     read_in_spectators_density(spectator_1_filename.str(),
                                spectator_2_filename.str());
     // participants
@@ -154,6 +152,16 @@ void EM_fields::read_in_spectators_density(string filename_1,
     }
     ifstream spec1(filename_1.c_str());
     ifstream spec2(filename_2.c_str());
+    if (!spec1.good()) {
+        cout << "Error:EM_fields::read_in_spectators_density: "
+             << "can not open file " << filename_1 << endl;
+        exit(1);
+    }
+    if (!spec2.good()) {
+        cout << "Error:EM_fields::read_in_spectators_density: "
+             << "can not open file " << filename_2 << endl;
+        exit(1);
+    }
 
     for (int i = 0; i < nucleon_density_grid_size; i++) {
         for (int j = 0; j < nucleon_density_grid_size; j++) {
@@ -164,7 +172,9 @@ void EM_fields::read_in_spectators_density(string filename_1,
 
     spec1.close();
     spec2.close();
-    cout << " done!" << endl;
+    if (verbose_level > 3) {
+        cout << " done!" << endl;
+    }
 }
 
 void EM_fields::read_in_participant_density(string filename_1,
@@ -174,6 +184,16 @@ void EM_fields::read_in_participant_density(string filename_1,
     }
     ifstream part1(filename_1.c_str());
     ifstream part2(filename_2.c_str());
+    if (!part1.good()) {
+        cout << "Error:EM_fields::read_in_participant_density: "
+             << "can not open file " << filename_1 << endl;
+        exit(1);
+    }
+    if (!part2.good()) {
+        cout << "Error:EM_fields::read_in_participant_density: "
+             << "can not open file " << filename_2 << endl;
+        exit(1);
+    }
 
     for (int i = 0; i < nucleon_density_grid_size; i++) {
         for (int j = 0; j < nucleon_density_grid_size; j++) {
@@ -184,7 +204,9 @@ void EM_fields::read_in_participant_density(string filename_1,
 
     part1.close();
     part2.close();
-    cout << " done!" << endl;
+    if (verbose_level > 3) {
+        cout << " done!" << endl;
+    }
 }
 
 void EM_fields::set_tau_grid_points(double x_local, double y_local,
@@ -299,19 +321,26 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
     // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename.c_str());
     if (verbose_level > 1) {
-        cout << "read in freeze-out surface points from VISH2+1"
+        cout << "read in freeze-out surface points from VISH2+1 "
              << "boost invariant outputs ...";
     }
+    if (!FOsurf.good()) {
+        cout << "Error:EM_fields::"
+             << "read_in_freezeout_surface_points_VISH2p1_boost_invariant:"
+             << "can not open file: " << filename << endl;
+        exit(1);
+    }
+
     // read in freeze-out surface positions
     double dummy;
     string input;
     double tau_local, x_local, y_local;
     double u_tau_local, u_x_local, u_y_local;
     double T_local;
+    getline(FOsurf, input, '\n');
     while (!FOsurf.eof()) {
-        getline(FOsurf, input, '\n');
         stringstream ss(input);
-        FOsurf >> tau_local >> x_local >> y_local >> dummy;  // eta_s = 0.0
+        ss >> tau_local >> x_local >> y_local >> dummy;  // eta_s = 0.0
         ss >> dummy >> dummy >> dummy >> dummy;   // skip surface vector da_mu
         // read in flow velocity
         ss >> dummy >> u_x_local >> u_y_local >> dummy;  // u_eta = 0.0
@@ -321,6 +350,10 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
         for (int i = 0; i < n_eta; i++) {
             fluidCell cell_local;
             cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
+            if (cell_local.mu_m < 1e-5) {     // mu_m is too small
+                cout << cell_local.mu_m << "  " << T_local << endl;
+                exit(1);
+            }
             cell_local.eta = eta_grid[i];
             cell_local.tau = tau_local;
             cell_local.x = x_local;
@@ -336,6 +369,7 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
             // push back the fluid cell into the cell list
             cell_list.push_back(cell_local);
         }
+        getline(FOsurf, input, '\n');
     }
     FOsurf.close();
     if (verbose_level > 1) {
@@ -472,10 +506,12 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
         double Edec, Tdec, muB, Pdec;
         double pi00, pi01, pi02, pi11, pi12, pi22, pi33;
         double bulkPi;
-        for (int i = 0; i < EM_fields_array_length; i++) {
+        int idx = 0;
+        for (int i = 0; i < EM_fields_array_length/n_eta; i++) {
+            // read in other hyper-surface information
             getline(decdat, input, '\n');
             stringstream ss(input);
-            ss >> dummy >> da0 >> da1 >> da2;  // read in da_i
+            ss >> dummy >> da0 >> da1 >> da2;  // read in da_mu
             double da3 = 0.0;
             ss >> dummy >> dummy;              // pipe vx and vy to dummy
             ss >> Edec >> dummy >> Tdec >> muB >> dummy >> Pdec;
@@ -485,38 +521,48 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             double pi13 = 0.0;
             double pi23 = 0.0;
             ss >> bulkPi;
-
-            double u_t = 1./sqrt(1. - cell_list[i].beta.x*cell_list[i].beta.x
-                                 - cell_list[i].beta.y*cell_list[i].beta.y
-                                 - cell_list[i].beta.z*cell_list[i].beta.z);
-            double u_x = cell_list[i].beta.x*u_t;
-            double u_y = cell_list[i].beta.y*u_t;
-            double u_z = cell_list[i].beta.z*u_t;
-            double u_tau = (u_t*cosh(cell_list[i].eta)
-                            - u_z*sinh(cell_list[i].eta));
-            double u_eta = 0.0;            // for boost-invariant medium
-            output_file << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].tau << "  " << cell_list[i].x << "  "
-                        << cell_list[i].y << "  " << cell_list[i].eta << "  "
-                        << da0 << "  " << da1 << "  " << da2 << "  "
-                        << da3 << "  "
-                        << u_tau << "  " << u_x << "  " << u_y << "  "
-                        << u_eta << "  "
-                        << Edec << "  " << Tdec << "  " << muB << "  "
-                        << e_plus_P_over_T << "  "
-                        << pi00 << "  " << pi01 << "  " << pi02 << "  "
-                        << pi03 << "  " << pi11 << "  " << pi12 << "  "
-                        << pi13 << "  " << pi22 << "  " << pi23 << "  "
-                        << pi33 << "  ";
-            if (turn_on_bulk == 1)
+            for (int j = 0; j < n_eta; j++) {
+                double u_t = (
+                    1./sqrt(1. - cell_list[idx].beta.x*cell_list[i].beta.x
+                               - cell_list[idx].beta.y*cell_list[i].beta.y
+                               - cell_list[idx].beta.z*cell_list[i].beta.z));
+                double u_x = cell_list[idx].beta.x*u_t;
+                double u_y = cell_list[idx].beta.y*u_t;
+                double u_z = cell_list[idx].beta.z*u_t;
+                double u_tau = (u_t*cosh(cell_list[idx].eta)
+                                - u_z*sinh(cell_list[idx].eta));
+                double u_eta = 0.0;            // for boost-invariant medium
                 output_file << scientific << setprecision(8) << setw(15)
-                            << bulkPi << "  ";
-            output_file << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].drift_u.tau << "  "
-                        << cell_list[i].drift_u.x << "  "
-                        << cell_list[i].drift_u.y << "  "
-                        << cell_list[i].drift_u.eta;
-            output_file << endl;
+                            << cell_list[idx].tau << "  "
+                            << cell_list[idx].x << "  "
+                            << cell_list[idx].y << "  "
+                            << cell_list[idx].eta << "  "
+                            << da0 << "  " << da1 << "  " << da2 << "  "
+                            << da3 << "  "
+                            << u_tau << "  " << u_x << "  " << u_y << "  "
+                            << u_eta << "  "
+                            << Edec << "  " << Tdec << "  " << muB << "  "
+                            << e_plus_P_over_T << "  "
+                            << pi00 << "  " << pi01 << "  " << pi02 << "  "
+                            << pi03 << "  " << pi11 << "  " << pi12 << "  "
+                            << pi13 << "  " << pi22 << "  " << pi23 << "  "
+                            << pi33 << "  ";
+                if (turn_on_bulk == 1)
+                    output_file << scientific << setprecision(8) << setw(15)
+                                << bulkPi << "  ";
+                // output drifting velocity at the end
+                output_file << scientific << setprecision(8) << setw(15)
+                            << cell_list[idx].drift_u_plus.tau << "  "
+                            << cell_list[idx].drift_u_plus.x << "  "
+                            << cell_list[idx].drift_u_plus.y << "  "
+                            << cell_list[idx].drift_u_plus.eta << "  "
+                            << cell_list[idx].drift_u_minus.tau << "  "
+                            << cell_list[idx].drift_u_minus.x << "  "
+                            << cell_list[idx].drift_u_minus.y << "  "
+                            << cell_list[idx].drift_u_minus.eta << "  ";
+                output_file << endl;
+                idx++;
+            }
         }
         decdat.close();
     } else if (mode == 3) {
@@ -528,7 +574,8 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
         double Edec, Tdec, muB, Pdec;
         double pi00, pi01, pi02, pi03, pi11, pi12, pi13, pi22, pi23, pi33;
         double bulkPi;
-        for (int i = 0; i < EM_fields_array_length; i++) {
+        int idx = 0;
+        for (int i = 0; i < EM_fields_array_length/n_eta; i++) {
             getline(decdat, input, '\n');
             stringstream ss(input);
             // pipe cell position to dummy
@@ -540,29 +587,37 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             ss >> pi00 >> pi01 >> pi02 >> pi03 >> pi11 >> pi12 >> pi13
                >> pi22 >> pi23 >> pi33;
             ss >> bulkPi;
-
-            output_file << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].tau << "  " << cell_list[i].x << "  "
-                        << cell_list[i].y << "  " << cell_list[i].eta << "  "
-                        << da0 << "  " << da1 << "  " << da2 << "  "
-                        << da3 << "  "
-                        << u_tau << "  " << u_x << "  " << u_y << "  "
-                        << u_eta << "  "
-                        << Edec << "  " << Tdec << "  " << muB << "  "
-                        << e_plus_P_over_T << "  "
-                        << pi00 << "  " << pi01 << "  " << pi02 << "  "
-                        << pi03 << "  " << pi11 << "  " << pi12 << "  "
-                        << pi13 << "  " << pi22 << "  " << pi23 << "  "
-                        << pi33 << "  ";
-            if (turn_on_bulk == 1)
+            for (int j = 0; j < n_eta; j++) {
                 output_file << scientific << setprecision(8) << setw(15)
-                            << bulkPi << "  ";
-            output_file << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].drift_u.tau << "  "
-                        << cell_list[i].drift_u.x << "  "
-                        << cell_list[i].drift_u.y << "  "
-                        << cell_list[i].drift_u.eta;
-            output_file << endl;
+                            << cell_list[idx].tau << "  "
+                            << cell_list[idx].x << "  "
+                            << cell_list[idx].y << "  "
+                            << cell_list[idx].eta << "  "
+                            << da0 << "  " << da1 << "  " << da2 << "  "
+                            << da3 << "  "
+                            << u_tau << "  " << u_x << "  " << u_y << "  "
+                            << u_eta << "  "
+                            << Edec << "  " << Tdec << "  " << muB << "  "
+                            << e_plus_P_over_T << "  "
+                            << pi00 << "  " << pi01 << "  " << pi02 << "  "
+                            << pi03 << "  " << pi11 << "  " << pi12 << "  "
+                            << pi13 << "  " << pi22 << "  " << pi23 << "  "
+                            << pi33 << "  ";
+                if (turn_on_bulk == 1)
+                    output_file << scientific << setprecision(8) << setw(15)
+                                << bulkPi << "  ";
+                output_file << scientific << setprecision(8) << setw(15)
+                            << cell_list[idx].drift_u_plus.tau << "  "
+                            << cell_list[idx].drift_u_plus.x << "  "
+                            << cell_list[idx].drift_u_plus.y << "  "
+                            << cell_list[idx].drift_u_plus.eta << "  "
+                            << cell_list[idx].drift_u_minus.tau << "  "
+                            << cell_list[idx].drift_u_minus.x << "  "
+                            << cell_list[idx].drift_u_minus.y << "  "
+                            << cell_list[idx].drift_u_minus.eta;
+                output_file << endl;
+                idx++;
+            }
         }
         decdat.close();
     }
@@ -572,7 +627,6 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
 void EM_fields::calculate_charge_drifting_velocity() {
     // this function calculates the drifting velocity of the fluid cell
     // included by the local EM fields
-
     if (verbose_level > 1) {
         cout << "calculating the charge drifiting velocity ... " << endl;
     }
@@ -583,7 +637,13 @@ void EM_fields::calculate_charge_drifting_velocity() {
     double *beta = new double[3];
     double *E_lrf = new double[3];
     double *B_lrf = new double[3];
-    double *drift_u = new double[4];
+    double **drift_u = new double* [2];
+    for (int i = 0; i < 2; i++) {
+        drift_u[i] = new double[4];
+    }
+    double *drift_u_plus = new double[4];
+    double *drift_u_minus = new double[4];
+    double q_array[2] = {1.0, -1.0};
 
     // loop over evey fluid cell
     for (int i = 0; i < EM_fields_array_length; i++) {
@@ -601,67 +661,99 @@ void EM_fields::calculate_charge_drifting_velocity() {
 
         // we calculate the drifting velocity in the local rest frame
         double mu_m = cell_list[i].mu_m;
-        double q = 1.0;
-        double qEx = q*E_lrf[0];
-        double qEy = q*E_lrf[1];
-        double qEz = q*E_lrf[2];
-        double qBx = q*B_lrf[0];
-        double qBy = q*B_lrf[1];
-        double qBz = q*B_lrf[2];
-        double denorm = (
-                1./(mu_m*(qBx*qBx + qBy*qBy + qBz*qBz) + mu_m*mu_m*mu_m));
-        double delta_v_x = (qEz*(qBx*qBz - qBy*mu_m) + qEy*(qBx*qBy + qBz*mu_m)
-                            + qEx*(qBx*qBx + mu_m*mu_m))*denorm;
-        double delta_v_y = (qEz*(qBy*qBz + qBx*mu_m) + qEx*(qBx*qBy - qBz*mu_m)
-                            + qEy*(qBy*qBy + mu_m*mu_m))*denorm;
-        double delta_v_z = (qEy*(qBy*qBz - qBx*mu_m) + qEx*(qBx*qBz + qBy*mu_m)
-                            + qEz*(qBz*qBz + mu_m*mu_m))*denorm;
-        double gamma = 1./sqrt(1. - delta_v_x*delta_v_x
-                               - delta_v_y*delta_v_y - delta_v_z*delta_v_z);
-        if (isnan(gamma)) {
-            cout << "Error:EM_fields:calculate_charge_drifting_velocity(): "
-                 << "drifting velocity is nan!" << endl;
-            cout << "gamma = " << gamma << ", delta_v_x = " << delta_v_x
-                 << ", delta_v_y = " << delta_v_y << ", delta_v_z = "
-                 << delta_v_z << endl;
-            cout << "denorm = " << denorm << endl;
-            cout << "mu_m = " << mu_m << ", qEx = " << qEx
-                 << ", qEy = " << qEy << ", qEz = " << qEz
-                 << ", qBx = " << qBx << ", qBy = " << qBy
-                 << ", qBz = " << qBz << endl;
-            cout << "beta_x = " << beta[0] << ", beta_y = " << beta[1]
-                 << "beta_z = " << beta[2] << endl;
-            cout << "eE_lab_x = " << E_lab[0]
-                 << ", eE_lab_y = " << E_lab[1]
-                 << ", eE_lab_z = " << E_lab[2]
-                 << ", eB_lab_x = " << B_lab[0]
-                 << ", eB_lab_y = " << B_lab[1]
-                 << ", eB_lab_z = " << B_lab[2] << endl;
-            exit(1);
+
+        // solve v for moving charges
+        for (int j = 0; j < 2; j++) {
+            double q = q_array[j];
+            double qEx = q*E_lrf[0];
+            double qEy = q*E_lrf[1];
+            double qEz = q*E_lrf[2];
+            double qBx = q*B_lrf[0];
+            double qBy = q*B_lrf[1];
+            double qBz = q*B_lrf[2];
+            double denorm = (
+                    1./(mu_m*(qBx*qBx + qBy*qBy + qBz*qBz) + mu_m*mu_m*mu_m));
+
+            double delta_v_x = (
+                    qEz*(qBx*qBz - qBy*mu_m) + qEy*(qBx*qBy + qBz*mu_m)
+                    + qEx*(qBx*qBx + mu_m*mu_m))*denorm;
+            double delta_v_y = (
+                    qEz*(qBy*qBz + qBx*mu_m) + qEx*(qBx*qBy - qBz*mu_m)
+                    + qEy*(qBy*qBy + mu_m*mu_m))*denorm;
+            double delta_v_z = (
+                    qEy*(qBy*qBz - qBx*mu_m) + qEx*(qBx*qBz + qBy*mu_m)
+                    + qEz*(qBz*qBz + mu_m*mu_m))*denorm;
+            double gamma = 1./sqrt(1. - delta_v_x*delta_v_x
+                                   - delta_v_y*delta_v_y
+                                   - delta_v_z*delta_v_z);
+            if (isnan(gamma)) {
+                cout << "Error:EM_fields:calculate_charge_drifting_velocity():"
+                     << " drifting velocity is nan!" << endl;
+                cout << "gamma = " << gamma << ", delta_v_x = " << delta_v_x
+                     << ", delta_v_y = " << delta_v_y << ", delta_v_z = "
+                     << delta_v_z << endl;
+                cout << "denorm = " << denorm << endl;
+                cout << "mu_m = " << mu_m << ", qEx = " << qEx
+                     << ", qEy = " << qEy << ", qEz = " << qEz
+                     << ", qBx = " << qBx << ", qBy = " << qBy
+                     << ", qBz = " << qBz << endl;
+                cout << "beta_x = " << beta[0] << ", beta_y = " << beta[1]
+                     << "beta_z = " << beta[2] << endl;
+                cout << "eE_lab_x = " << E_lab[0]
+                     << ", eE_lab_y = " << E_lab[1]
+                     << ", eE_lab_z = " << E_lab[2]
+                     << ", eB_lab_x = " << B_lab[0]
+                     << ", eB_lab_y = " << B_lab[1]
+                     << ", eB_lab_z = " << B_lab[2] << endl;
+                exit(1);
+            }
+            drift_u[j][0] = gamma;
+            drift_u[j][1] = gamma*delta_v_x;
+            drift_u[j][2] = gamma*delta_v_y;
+            drift_u[j][3] = gamma*delta_v_z;
         }
-        drift_u[0] = gamma;
-        drift_u[1] = gamma*delta_v_x;
-        drift_u[2] = gamma*delta_v_y;
-        drift_u[3] = gamma*delta_v_z;
+
+        for (int l = 0; l < 4; l++) {
+            drift_u_plus[l] = drift_u[0][l];
+            drift_u_minus[l] = drift_u[1][l];
+        }
+
         // finally we boost the delta v back to longitudinal comving frame
-        for (int i = 0; i < 3; i++) {  // prepare the velocity
-            beta[i] = - beta[i];
+        for (int k = 0; k < 3; k++) {  // prepare the velocity
+            beta[k] = - beta[k];
         }
-        lorentz_transform_vector_in_place(drift_u, beta);
+        lorentz_transform_vector_in_place(drift_u_plus, beta);
+        lorentz_transform_vector_in_place(drift_u_minus, beta);
+
         // transform to tau-eta coorrdinate with tilde{u}^eta = tau*u^eta
         double eta_s = cell_list[i].eta;
         double sinh_eta_s = sinh(eta_s);
         double cosh_eta_s = cosh(eta_s);
-        double drift_u_tau = drift_u[0]*cosh_eta_s - drift_u[3]*sinh_eta_s;
-        double drift_u_eta = - drift_u[0]*sinh_eta_s + drift_u[3]*cosh_eta_s;
-        cell_list[i].drift_u.tau = drift_u_tau;
-        cell_list[i].drift_u.x = drift_u[1];
-        cell_list[i].drift_u.y = drift_u[2];
-        cell_list[i].drift_u.eta = drift_u_eta;
+        double drift_u_plus_tau = (
+                drift_u_plus[0]*cosh_eta_s - drift_u_plus[3]*sinh_eta_s);
+        double drift_u_plus_eta = (
+                - drift_u_plus[0]*sinh_eta_s + drift_u_plus[3]*cosh_eta_s);
+        cell_list[i].drift_u_plus.tau = drift_u_plus_tau;
+        cell_list[i].drift_u_plus.x = drift_u_plus[1];
+        cell_list[i].drift_u_plus.y = drift_u_plus[2];
+        cell_list[i].drift_u_plus.eta = drift_u_plus_eta;
+        double drift_u_minus_tau = (
+                drift_u_minus[0]*cosh_eta_s - drift_u_minus[3]*sinh_eta_s);
+        double drift_u_minus_eta = (
+                - drift_u_minus[0]*sinh_eta_s + drift_u_minus[3]*cosh_eta_s);
+        cell_list[i].drift_u_minus.tau = drift_u_minus_tau;
+        cell_list[i].drift_u_minus.x = drift_u_minus[1];
+        cell_list[i].drift_u_minus.y = drift_u_minus[2];
+        cell_list[i].drift_u_minus.eta = drift_u_minus_eta;
     }
 
     // clean up
+    for (int i = 0; i < 2; i++) {
+        delete [] drift_u[i];
+    }
     delete [] drift_u;
+    delete [] drift_u_plus;
+    delete [] drift_u_minus;
     delete [] E_lab;
     delete [] B_lab;
     delete [] E_lrf;

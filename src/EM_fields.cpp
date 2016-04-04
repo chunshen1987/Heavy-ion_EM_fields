@@ -18,6 +18,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     paraRdr = paraRdr_in;
 
     mode = paraRdr->getVal("mode");
+    verbose_level = paraRdr->getVal("verbose_level");
     turn_on_bulk = paraRdr->getVal("turn_on_bulk");
     int atomic_number = paraRdr->getVal("atomic_number");
     int number_of_proton = paraRdr->getVal("number_of_proton");
@@ -148,7 +149,9 @@ void EM_fields::read_in_densities(string path) {
 
 void EM_fields::read_in_spectators_density(string filename_1,
                                            string filename_2) {
-    cout << "read in spectator density ...";
+    if (verbose_level > 3) {
+        cout << "read in spectator density ...";
+    }
     ifstream spec1(filename_1.c_str());
     ifstream spec2(filename_2.c_str());
 
@@ -166,7 +169,9 @@ void EM_fields::read_in_spectators_density(string filename_1,
 
 void EM_fields::read_in_participant_density(string filename_1,
                                             string filename_2) {
-    cout << "read in participant density ...";
+    if (verbose_level > 3) {
+        cout << "read in participant density ...";
+    }
     ifstream part1(filename_1.c_str());
     ifstream part2(filename_2.c_str());
 
@@ -199,7 +204,10 @@ void EM_fields::set_tau_grid_points(double x_local, double y_local,
         cell_list.push_back(cell_local);
     }
     EM_fields_array_length = cell_list.size();
-    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
 }
 
 void EM_fields::set_transverse_grid_points(double tau_local, double eta_local) {
@@ -221,7 +229,10 @@ void EM_fields::set_transverse_grid_points(double tau_local, double eta_local) {
         }
     }
     EM_fields_array_length = cell_list.size();
-    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
 }
 
 void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
@@ -229,7 +240,9 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename1.c_str());
     ifstream decdat(filename2.c_str());
-    cout << "read in freeze-out surface points from VISH2+1 outputs ...";
+    if (verbose_level > 1) {
+        cout << "read in freeze-out surface points from VISH2+1 outputs ...";
+    }
     // read in freeze-out surface positions
     double dummy;
     string input;
@@ -271,17 +284,24 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     }
     FOsurf.close();
     decdat.close();
-    cout << " done!" << endl;
+    if (verbose_level > 1) {
+        cout << " done!" << endl;
+    }
     EM_fields_array_length = cell_list.size();
-    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
 }
 
 void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename) {
     // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename.c_str());
-    cout << "read in freeze-out surface points from VISH2+1 boost invariant "
-         << "outputs ...";
+    if (verbose_level > 1) {
+        cout << "read in freeze-out surface points from VISH2+1"
+             << "boost invariant outputs ...";
+    }
     // read in freeze-out surface positions
     double dummy;
     string input;
@@ -318,9 +338,14 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
         }
     }
     FOsurf.close();
-    cout << " done!" << endl;
+    if (verbose_level > 1) {
+        cout << " done!" << endl;
+    }
     EM_fields_array_length = cell_list.size();
-    cout << "number of freeze-out cells: " << EM_fields_array_length << endl;
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
 }
 
 void EM_fields::calculate_EM_fields() {
@@ -401,11 +426,13 @@ void EM_fields::calculate_EM_fields() {
             *(sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
         cell_list[i_array].B_lab.z = 0.0;
 
-        if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
-            cout << "computing EM fields: " << setprecision(3)
-                 << (static_cast<double>(i_array)
-                     /static_cast<double>(EM_fields_array_length)*100)
-                 << "\% done." << endl;
+        if (verbose_level > 3) {
+            if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
+                cout << "computing EM fields: " << setprecision(3)
+                     << (static_cast<double>(i_array)
+                         /static_cast<double>(EM_fields_array_length)*100)
+                     << "\% done." << endl;
+            }
         }
     }
     return;
@@ -546,7 +573,9 @@ void EM_fields::calculate_charge_drifting_velocity() {
     // this function calculates the drifting velocity of the fluid cell
     // included by the local EM fields
 
-    cout << "calculating the charge drifiting velocity ... " << endl;
+    if (verbose_level > 1) {
+        cout << "calculating the charge drifiting velocity ... " << endl;
+    }
 
     // initialization
     double *E_lab = new double[3];

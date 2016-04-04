@@ -28,6 +28,7 @@ struct fluidCell {
 class EM_fields {
  private:
     int mode;
+    int verbose_level;
     int turn_on_bulk;
     int initialization_status;
     ParameterReader *paraRdr;

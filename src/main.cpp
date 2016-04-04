@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
     testEM.calculate_EM_fields();
     testEM.calculate_charge_drifting_velocity();
     testEM.output_EM_fields("./results/EM_fields.dat");
+    testEM.output_surface_file_with_drifting_velocity(
+                            "./results/surface_with_drifting_velocity.dat");
 
     sw.toc();
     cout << "Totally takes " << sw.takeTime() << " sec." << endl;

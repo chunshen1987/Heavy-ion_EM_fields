@@ -294,7 +294,8 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
         FOsurf >> tau_local >> x_local >> y_local >> dummy;  // eta_s = 0.0
         ss >> dummy >> dummy >> dummy >> dummy;   // skip surface vector da_mu
         // read in flow velocity
-        ss >> u_tau_local >> u_x_local >> u_y_local >> dummy;  // u_eta = 0.0
+        ss >> dummy >> u_x_local >> u_y_local >> dummy;  // u_eta = 0.0
+        u_tau_local = sqrt(1. + u_x_local*u_x_local + u_y_local*u_y_local);
         ss >> dummy >> dummy >> T_local;
         // the rest information is discarded
         for (int i = 0; i < n_eta; i++) {
@@ -588,6 +589,27 @@ void EM_fields::calculate_charge_drifting_velocity() {
                             + qEz*(qBz*qBz + mu_m*mu_m))*denorm;
         double gamma = 1./sqrt(1. - delta_v_x*delta_v_x
                                - delta_v_y*delta_v_y - delta_v_z*delta_v_z);
+        if (isnan(gamma)) {
+            cout << "Error:EM_fields:calculate_charge_drifting_velocity(): "
+                 << "drifting velocity is nan!" << endl;
+            cout << "gamma = " << gamma << ", delta_v_x = " << delta_v_x
+                 << ", delta_v_y = " << delta_v_y << ", delta_v_z = "
+                 << delta_v_z << endl;
+            cout << "denorm = " << denorm << endl;
+            cout << "mu_m = " << mu_m << ", qEx = " << qEx
+                 << ", qEy = " << qEy << ", qEz = " << qEz
+                 << ", qBx = " << qBx << ", qBy = " << qBy
+                 << ", qBz = " << qBz << endl;
+            cout << "beta_x = " << beta[0] << ", beta_y = " << beta[1]
+                 << "beta_z = " << beta[2] << endl;
+            cout << "eE_lab_x = " << E_lab[0]
+                 << ", eE_lab_y = " << E_lab[1]
+                 << ", eE_lab_z = " << E_lab[2]
+                 << ", eB_lab_x = " << B_lab[0]
+                 << ", eB_lab_y = " << B_lab[1]
+                 << ", eB_lab_z = " << B_lab[2] << endl;
+            exit(1);
+        }
         drift_u[0] = gamma;
         drift_u[1] = gamma*delta_v_x;
         drift_u[2] = gamma*delta_v_y;
@@ -623,6 +645,9 @@ void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
 // v is a 3 vector and u_mu is a 4 vector
     double v2 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
     double vp = v[0]*u_mu[1] + v[1]*u_mu[2] + v[2]*u_mu[3];
+    if (v2 > 1.) {
+        v2 = 1. - 1e-12;
+    }
 
     double gamma = 1./sqrt(1. - v2);
     double gamma_m_1 = gamma - 1.;
@@ -646,8 +671,11 @@ void EM_fields::Lorentz_boost_EM_fields(double *E_lab, double *B_lab,
         beta_dot_E += beta[i]*E_lab[i];
         beta_dot_B += beta[i]*B_lab[i];
     }
-    double gamma =
-        1./sqrt(1. - beta[0]*beta[0] - beta[1]*beta[1] - beta[2]*beta[2]);
+    double beta2 = beta[0]*beta[0] + beta[1]*beta[1] + beta[2]*beta[2];
+    if (beta2 > 1.) {
+        beta2 = 1. - 1e-12;
+    }
+    double gamma = 1./sqrt(1. - beta2);
     double beta_cross_E[3], beta_cross_B[3];
     cross_product(beta, E_lab, beta_cross_E);
     cross_product(beta, B_lab, beta_cross_B);

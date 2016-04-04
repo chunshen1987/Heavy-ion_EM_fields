@@ -1,6 +1,8 @@
-mode = 2                  # 0: compute EM fields in the transverse plane
+mode = 3                  # 0: compute EM fields in the transverse plane
                           # 1: compute EM fields at the freeze-out surface
                           # 2: compute EM fields as a function of proper time
+                          # 3: compute EM fields at the freeze-out surface
+                          #    with new VISH2+1 hypersurface output format
 turn_on_bulk = 0          # whether the hypersurface file from hydro
                           # includes bulk pressure
 

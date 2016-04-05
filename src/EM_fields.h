@@ -66,6 +66,7 @@ class EM_fields {
     void read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename);
     void calculate_EM_fields();
+    void calculate_EM_fields_no_electric_conductivity();
     void calculate_charge_drifting_velocity();
     void output_EM_fields(string filename);
     void output_surface_file_with_drifting_velocity(string filename);

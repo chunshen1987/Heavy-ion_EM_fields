@@ -384,6 +384,101 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
 
 void EM_fields::calculate_EM_fields() {
     // this function calculates E and B fields
+    double sigma = 0.023;       // electric conductivity [fm^-1]
+    double cosh_spectator_rap = cosh(spectator_rap);
+    double sinh_spectator_rap = sinh(spectator_rap);
+
+    double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
+    for (int i_array = 0; i_array < EM_fields_array_length; i_array++) {
+        double field_x = cell_list[i_array].x;
+        double field_y = cell_list[i_array].y;
+        double field_tau = cell_list[i_array].tau;
+        double field_eta = cell_list[i_array].eta;
+        double temp_sum_Ex_spectator = 0.0e0;
+        double temp_sum_Ey_spectator = 0.0e0;
+        double temp_sum_Ez_spectator = 0.0e0;
+        double temp_sum_Bx_spectator = 0.0e0;
+        double temp_sum_By_spectator = 0.0e0;
+
+        double z_local_spectator_1 = field_tau*sinh(field_eta - spectator_rap);
+        double z_local_spectator_2 = field_tau*sinh(field_eta + spectator_rap);
+        double z_local_spectator_1_sq = (z_local_spectator_1
+                                         *z_local_spectator_1);
+        double z_local_spectator_2_sq = (z_local_spectator_2
+                                         *z_local_spectator_2);
+
+        for (int i = 0; i < nucleon_density_grid_size; i++) {
+            double grid_x = nucleon_density_grid_x_array[i];
+            for (int j = 0; j < nucleon_density_grid_size; j++) {
+                double grid_y = nucleon_density_grid_y_array[j];
+                double x_local = field_x - grid_x;
+                double y_local = field_y - grid_y;
+                double r_perp_local_sq = x_local*x_local + y_local*y_local;
+                double Delta_1 = sqrt(r_perp_local_sq
+                                      + z_local_spectator_1_sq);
+                double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
+                double Delta_2 = sqrt(r_perp_local_sq
+                                      + z_local_spectator_2_sq);
+                double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
+                double A_1 = sigma/2.*(z_local_spectator_1*sinh_spectator_rap
+                                       - sinh_spectator_rap*Delta_1);
+                double A_2 = sigma/2.*(- z_local_spectator_2*sinh_spectator_rap
+                                       - sinh_spectator_rap*Delta_2);
+                double exp_A_1 = exp(A_1);
+                double exp_A_2 = exp(A_2);
+                double common_integrand_E = (
+                    1./Delta_1_cubic*(
+                        sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
+                    + 1./Delta_2_cubic*(
+                        sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
+                );
+                double common_integrand_B = (
+                    1./Delta_1_cubic*(
+                        sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
+                    - 1./Delta_2_cubic*(
+                        sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
+                );
+
+                double Ex_integrand = y_local*common_integrand_E;
+                double Ey_integrand = x_local*common_integrand_E;
+                double Bx_integrand = -x_local*common_integrand_B;
+                double By_integrand = y_local*common_integrand_B;
+                
+                temp_sum_Ex_spectator += Ex_integrand;
+                temp_sum_Ey_spectator += Ey_integrand;
+                temp_sum_Bx_spectator += Bx_integrand;
+                temp_sum_By_spectator += By_integrand;
+            }
+        }
+        cell_list[i_array].E_lab.x = (
+            unit_convert*charge_fraction*alpha_EM
+            *cosh_spectator_rap*temp_sum_Ex_spectator*dx_sq);
+        cell_list[i_array].E_lab.y = (
+            unit_convert*charge_fraction*alpha_EM
+            *cosh_spectator_rap*temp_sum_Ey_spectator*dx_sq);
+        cell_list[i_array].E_lab.z = 0.0;
+        cell_list[i_array].B_lab.x = (
+            unit_convert*charge_fraction*alpha_EM
+            *sinh_spectator_rap*temp_sum_Bx_spectator*dx_sq);
+        cell_list[i_array].B_lab.y = (
+            unit_convert*charge_fraction*alpha_EM
+            *sinh_spectator_rap*temp_sum_By_spectator*dx_sq);
+        cell_list[i_array].B_lab.z = 0.0;
+
+        if (verbose_level > 3) {
+            if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
+                cout << "computing EM fields: " << setprecision(3)
+                     << (static_cast<double>(i_array)
+                         /static_cast<double>(EM_fields_array_length)*100)
+                     << "\% done." << endl;
+            }
+        }
+    }
+    return;
+}
+
+void EM_fields::calculate_EM_fields_no_electric_conductivity() {
+    // this function calculates E and B fields
     double cosh_spectator_rap = cosh(spectator_rap);
     double sinh_spectator_rap = sinh(spectator_rap);
 

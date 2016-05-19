@@ -48,9 +48,9 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     participant_density_2 = new double* [nucleon_density_grid_size];
     for (int i = 0; i < nucleon_density_grid_size; i++) {
         nucleon_density_grid_x_array[i] = (
-            -(nucleon_density_grid_size-1)/2. + i*nucleon_density_grid_dx);
+            (-(nucleon_density_grid_size-1)/2. + i)*nucleon_density_grid_dx);
         nucleon_density_grid_y_array[i] = (
-            -(nucleon_density_grid_size-1)/2. + i*nucleon_density_grid_dx);
+            (-(nucleon_density_grid_size-1)/2. + i)*nucleon_density_grid_dx);
         spectator_density_1[i] = new double[nucleon_density_grid_size];
         spectator_density_2[i] = new double[nucleon_density_grid_size];
         participant_density_1[i] = new double[nucleon_density_grid_size];
@@ -91,6 +91,10 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     } else if (mode == 3) {
         read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                     "./results/surface.dat");
+    } else if (mode == 4) {
+        read_in_freezeout_surface_points_MUSIC("./results/surface.dat");
+    } else if (mode == -1) {
+        read_in_freezeout_surface_points_Gubser("./results/surface.dat");
     } else {
         cout << "EM_fields:: Error: unrecognize mode! "
              << "mode = " << mode << endl;
@@ -127,11 +131,18 @@ EM_fields::~EM_fields() {
 void EM_fields::read_in_densities(string path) {
     // spectators
     ostringstream spectator_1_filename;
-    spectator_1_filename << path
-                         << "/spectator_density_A_fromSd_order_2.dat";
     ostringstream spectator_2_filename;
-    spectator_2_filename << path
-                         << "/spectator_density_B_fromSd_order_2.dat";
+    if (mode == -1) {
+        spectator_1_filename << path
+                         << "/spectator_density_A_disk.dat";
+        spectator_2_filename << path
+                         << "/spectator_density_B_disk.dat";
+    } else {
+        spectator_1_filename << path
+                             << "/spectator_density_A_fromSd_order_2.dat";
+        spectator_2_filename << path
+                             << "/spectator_density_B_fromSd_order_2.dat";
+    }
     read_in_spectators_density(spectator_1_filename.str(),
                                spectator_2_filename.str());
     // participants
@@ -316,6 +327,67 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     }
 }
 
+void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
+    // this function reads in the freeze out surface points from a text file
+    ifstream FOsurf(filename.c_str());
+    if (verbose_level > 1) {
+        cout << "read in freeze-out surface points from Gubser ...";
+    }
+    if (!FOsurf.good()) {
+        cout << "Error:EM_fields::"
+             << "read_in_freezeout_surface_points_Gubser:"
+             << "can not open file: " << filename << endl;
+        exit(1);
+    }
+
+    // read in freeze-out surface positions
+    string input;
+    double tau_local, x_local, y_local;
+    double u_tau_local, u_x_local, u_y_local;
+    double T_local;
+    getline(FOsurf, input, '\n');  // read in header
+    getline(FOsurf, input, '\n');
+    while (!FOsurf.eof()) {
+        stringstream ss(input);
+        ss >> tau_local >> x_local;
+        y_local = 0.0;
+        u_tau_local = 1.0;
+        u_x_local = 0.0;
+        u_y_local = 0.0;
+        T_local = 0.2;
+        fluidCell cell_local;
+        cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
+        if (cell_local.mu_m < 1e-5) {     // mu_m is too small
+            cout << cell_local.mu_m << "  " << T_local << endl;
+            exit(1);
+        }
+        cell_local.eta = 0.0;
+        cell_local.tau = tau_local;
+        cell_local.x = x_local;
+        cell_local.y = y_local;
+
+        // compute fluid velocity in t-xyz coordinate
+        double u_t_local = u_tau_local;
+        double u_z_local = 0.0;
+        cell_local.beta.x = u_x_local/u_t_local;
+        cell_local.beta.y = u_y_local/u_t_local;
+        cell_local.beta.z = u_z_local/u_t_local;
+
+        // push back the fluid cell into the cell list
+        cell_list.push_back(cell_local);
+        getline(FOsurf, input, '\n');
+    }
+    FOsurf.close();
+    if (verbose_level > 1) {
+        cout << " done!" << endl;
+    }
+    EM_fields_array_length = cell_list.size();
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
+}
+
 void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename) {
     // this function reads in the freeze out surface points from a text file
@@ -382,6 +454,73 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
     }
 }
 
+void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
+    // this function reads in the freeze out surface points from a text file
+    ifstream FOsurf(filename.c_str());
+    if (verbose_level > 1) {
+        cout << "read in freeze-out surface points from MUSIC "
+             << "(3+1)-d outputs ...";
+    }
+    if (!FOsurf.good()) {
+        cout << "Error:EM_fields::"
+             << "read_in_freezeout_surface_points_MUSIC:"
+             << "can not open file: " << filename << endl;
+        exit(1);
+    }
+
+    // read in freeze-out surface positions
+    double dummy;
+    string input;
+    double tau_local, x_local, y_local, eta_s_local;
+    double u_tau_local, u_x_local, u_y_local, u_eta_local;
+    double T_local;
+    getline(FOsurf, input, '\n');
+    while (!FOsurf.eof()) {
+        stringstream ss(input);
+        ss >> tau_local >> x_local >> y_local >> eta_s_local;
+        ss >> dummy >> dummy >> dummy >> dummy;
+        // read in flow velocity
+        // here u^eta = tau*u^eta
+        ss >> dummy >> u_x_local >> u_y_local >> u_eta_local;
+        u_tau_local = sqrt(1. + u_x_local*u_x_local + u_y_local*u_y_local
+                           + u_eta_local*u_eta_local);
+        ss >> dummy >> T_local;
+        // the rest information is discarded
+        fluidCell cell_local;
+        cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
+        if (cell_local.mu_m < 1e-5) {     // mu_m is too small
+            cout << cell_local.mu_m << "  " << T_local << endl;
+            exit(1);
+        }
+        cell_local.eta = eta_s_local;
+        cell_local.tau = tau_local;
+        cell_local.x = x_local;
+        cell_local.y = y_local;
+
+        // compute fluid velocity in t-xyz coordinate
+        double cosh_eta_s = cosh(eta_s_local);
+        double sinh_eta_s = sinh(eta_s_local);
+        double u_t_local = u_tau_local*cosh_eta_s + u_eta_local*sinh_eta_s;
+        double u_z_local = u_tau_local*sinh_eta_s + u_eta_local*cosh_eta_s;
+        cell_local.beta.x = u_x_local/u_t_local;
+        cell_local.beta.y = u_y_local/u_t_local;
+        cell_local.beta.z = u_z_local/u_t_local;
+
+        // push back the fluid cell into the cell list
+        cell_list.push_back(cell_local);
+        getline(FOsurf, input, '\n');
+    }
+    FOsurf.close();
+    if (verbose_level > 1) {
+        cout << " done!" << endl;
+    }
+    EM_fields_array_length = cell_list.size();
+    if (verbose_level > 1) {
+        cout << "number of freeze-out cells: "
+             << EM_fields_array_length << endl;
+    }
+}
+
 void EM_fields::calculate_EM_fields() {
     // this function calculates E and B fields
     double sigma = 0.023;       // electric conductivity [fm^-1]
@@ -400,8 +539,8 @@ void EM_fields::calculate_EM_fields() {
         double temp_sum_Bx_spectator = 0.0e0;
         double temp_sum_By_spectator = 0.0e0;
 
-        double z_local_spectator_1 = field_tau*sinh(field_eta - spectator_rap);
-        double z_local_spectator_2 = field_tau*sinh(field_eta + spectator_rap);
+        double z_local_spectator_1 = field_tau*sinh(spectator_rap - field_eta);
+        double z_local_spectator_2 = field_tau*sinh(-spectator_rap - field_eta);
         double z_local_spectator_1_sq = (z_local_spectator_1
                                          *z_local_spectator_1);
         double z_local_spectator_2_sq = (z_local_spectator_2
@@ -420,29 +559,29 @@ void EM_fields::calculate_EM_fields() {
                 double Delta_2 = sqrt(r_perp_local_sq
                                       + z_local_spectator_2_sq);
                 double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
-                double A_1 = sigma/2.*(z_local_spectator_1*sinh_spectator_rap
-                                       - sinh_spectator_rap*Delta_1);
-                double A_2 = sigma/2.*(- z_local_spectator_2*sinh_spectator_rap
-                                       - sinh_spectator_rap*Delta_2);
+                double A_1 = (sigma/2.*(z_local_spectator_1 - Delta_1)
+                                      *sinh_spectator_rap);
+                double A_2 = (sigma/2.*(z_local_spectator_2 + Delta_2)
+                                      *(-sinh_spectator_rap));
                 double exp_A_1 = exp(A_1);
                 double exp_A_2 = exp(A_2);
                 double common_integrand_E = (
-                    1./Delta_1_cubic*(
-                        sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
-                    + 1./Delta_2_cubic*(
-                        sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
+                    spectator_density_1[i][j]/(Delta_1_cubic + 1e-15)
+                      *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
+                    + spectator_density_2[i][j]/(Delta_2_cubic + 1e-15)
+                      *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
                 );
                 double common_integrand_B = (
-                    1./Delta_1_cubic*(
-                        sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
-                    - 1./Delta_2_cubic*(
-                        sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
+                    spectator_density_1[i][j]/(Delta_1_cubic + 1e-15)
+                    *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
+                    - spectator_density_2[i][j]/(Delta_2_cubic + 1e-15)
+                      *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
                 );
 
-                double Ex_integrand = y_local*common_integrand_E;
-                double Ey_integrand = x_local*common_integrand_E;
-                double Bx_integrand = -x_local*common_integrand_B;
-                double By_integrand = y_local*common_integrand_B;
+                double Ex_integrand = x_local*common_integrand_E;
+                double Ey_integrand = y_local*common_integrand_E;
+                double Bx_integrand = -y_local*common_integrand_B;
+                double By_integrand = x_local*common_integrand_B;
                 
                 temp_sum_Ex_spectator += Ex_integrand;
                 temp_sum_Ey_spectator += Ey_integrand;
@@ -451,19 +590,30 @@ void EM_fields::calculate_EM_fields() {
             }
         }
         cell_list[i_array].E_lab.x = (
-            unit_convert*charge_fraction*alpha_EM
+            charge_fraction*alpha_EM
             *cosh_spectator_rap*temp_sum_Ex_spectator*dx_sq);
         cell_list[i_array].E_lab.y = (
-            unit_convert*charge_fraction*alpha_EM
+            charge_fraction*alpha_EM
             *cosh_spectator_rap*temp_sum_Ey_spectator*dx_sq);
-        cell_list[i_array].E_lab.z = 0.0;
+        cell_list[i_array].E_lab.z = (
+            charge_fraction*alpha_EM
+            *dx_sq*temp_sum_Ez_spectator);
         cell_list[i_array].B_lab.x = (
-            unit_convert*charge_fraction*alpha_EM
+            charge_fraction*alpha_EM
             *sinh_spectator_rap*temp_sum_Bx_spectator*dx_sq);
         cell_list[i_array].B_lab.y = (
-            unit_convert*charge_fraction*alpha_EM
+            charge_fraction*alpha_EM
             *sinh_spectator_rap*temp_sum_By_spectator*dx_sq);
         cell_list[i_array].B_lab.z = 0.0;
+        if (mode != -1) {
+            // convert units to [GeV^2]
+            cell_list[i_array].E_lab.x *= unit_convert;
+            cell_list[i_array].E_lab.y *= unit_convert;
+            cell_list[i_array].E_lab.z *= unit_convert;
+            cell_list[i_array].B_lab.x *= unit_convert;
+            cell_list[i_array].B_lab.y *= unit_convert;
+            cell_list[i_array].B_lab.z *= unit_convert;
+        }
 
         if (verbose_level > 3) {
             if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
@@ -571,9 +721,15 @@ void EM_fields::output_EM_fields(string filename) {
     // this function outputs the computed E and B fields to a text file
     ofstream output_file(filename.c_str());
     // write a header first
-    output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
-                << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
-                << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
+    if (mode == -1) {
+        output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
+                    << "eE_x[1/fm^2]  eE_y[1/fm^2]  eE_z[1/fm^2]  "
+                    << "eB_x[1/fm^2]  eB_y[1/fm^2]  eB_z[1/fm^2]" << endl;
+    } else {
+        output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
+                    << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
+                    << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
+    }
     for (int i = 0; i < EM_fields_array_length; i++) {
         output_file << scientific << setprecision(8) << setw(15)
                     << cell_list[i].tau << "   " << cell_list[i].x << "   "
@@ -713,6 +869,23 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                 output_file << endl;
                 idx++;
             }
+        }
+        decdat.close();
+    } else if (mode == 4) {
+        ifstream decdat("./results/surface.dat");
+        string input;
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            getline(decdat, input, '\n');
+            output_file << input;
+            output_file << " " << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].drift_u_plus.tau << " "
+                        << cell_list[i].drift_u_plus.x << " "
+                        << cell_list[i].drift_u_plus.y << " "
+                        << cell_list[i].drift_u_plus.eta << " "
+                        << cell_list[i].drift_u_minus.tau << " "
+                        << cell_list[i].drift_u_minus.x << " "
+                        << cell_list[i].drift_u_minus.y << " "
+                        << cell_list[i].drift_u_minus.eta << endl;
         }
         decdat.close();
     }

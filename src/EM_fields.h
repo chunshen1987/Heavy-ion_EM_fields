@@ -63,8 +63,10 @@ class EM_fields {
     void read_in_participant_density(string filename_1, string filename_2);
     void read_in_freezeout_surface_points_VISH2p1(string filename1,
                                                   string filename2);
+    void read_in_freezeout_surface_points_Gubser(string filename);
     void read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename);
+    void read_in_freezeout_surface_points_MUSIC(string filename);
     void calculate_EM_fields();
     void calculate_EM_fields_no_electric_conductivity();
     void calculate_charge_drifting_velocity();

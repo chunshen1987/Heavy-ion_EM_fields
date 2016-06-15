@@ -352,7 +352,7 @@ void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
         ss >> x_local >> tau_local >> u_tau_local >> u_x_local;
         y_local = 0.0;
         u_y_local = 0.0;
-        T_local = 0.2;
+        T_local = 0.2;  // GeV
         fluidCell cell_local;
         cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
         if (cell_local.mu_m < 1e-5) {     // mu_m is too small
@@ -603,15 +603,14 @@ void EM_fields::calculate_EM_fields() {
             charge_fraction*alpha_EM
             *sinh_spectator_rap*temp_sum_By_spectator*dx_sq);
         cell_list[i_array].B_lab.z = 0.0;
-        if (mode != -1) {
-            // convert units to [GeV^2]
-            cell_list[i_array].E_lab.x *= unit_convert;
-            cell_list[i_array].E_lab.y *= unit_convert;
-            cell_list[i_array].E_lab.z *= unit_convert;
-            cell_list[i_array].B_lab.x *= unit_convert;
-            cell_list[i_array].B_lab.y *= unit_convert;
-            cell_list[i_array].B_lab.z *= unit_convert;
-        }
+
+        // convert units to [GeV^2]
+        cell_list[i_array].E_lab.x *= hbarCsq;
+        cell_list[i_array].E_lab.y *= hbarCsq;
+        cell_list[i_array].E_lab.z *= hbarCsq;
+        cell_list[i_array].B_lab.x *= hbarCsq;
+        cell_list[i_array].B_lab.y *= hbarCsq;
+        cell_list[i_array].B_lab.z *= hbarCsq;
 
         if (verbose_level > 3) {
             if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
@@ -688,18 +687,18 @@ void EM_fields::calculate_EM_fields_no_electric_conductivity() {
             }
         }
         cell_list[i_array].E_lab.x = (
-            unit_convert*charge_fraction*alpha_EM
+            hbarCsq*charge_fraction*alpha_EM
             *cosh_spectator_rap*temp_sum_Ex_spectator*dx_sq);
         cell_list[i_array].E_lab.y = (
-            unit_convert*charge_fraction*alpha_EM
+            hbarCsq*charge_fraction*alpha_EM
             *cosh_spectator_rap*temp_sum_Ey_spectator*dx_sq);
         cell_list[i_array].E_lab.z = (
-            unit_convert*charge_fraction*alpha_EM*temp_sum_Ez_spectator*dx_sq);
+            hbarCsq*charge_fraction*alpha_EM*temp_sum_Ez_spectator*dx_sq);
         cell_list[i_array].B_lab.x = (
-            unit_convert*charge_fraction*alpha_EM
+            hbarCsq*charge_fraction*alpha_EM
             *((-sinh_spectator_rap)*temp_sum_Bx_spectator)*dx_sq);
         cell_list[i_array].B_lab.y = (
-            unit_convert*charge_fraction*alpha_EM
+            hbarCsq*charge_fraction*alpha_EM
             *(sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
         cell_list[i_array].B_lab.z = 0.0;
 
@@ -721,23 +720,35 @@ void EM_fields::output_EM_fields(string filename) {
     // write a header first
     if (mode == -1) {
         output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
-                    << "eE_x[1/fm^2]  eE_y[1/fm^2]  eE_z[1/fm^2]  "
-                    << "eB_x[1/fm^2]  eB_y[1/fm^2]  eB_z[1/fm^2]" << endl;
+                    << "E_x[1/fm^2]  E_y[1/fm^2]  E_z[1/fm^2]  "
+                    << "B_x[1/fm^2]  B_y[1/fm^2]  B_z[1/fm^2]" << endl;
+        double unit_convert = 1./(hbarCsq*sqrt(4.*M_PI*alpha_EM));
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            output_file << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].tau << "   " << cell_list[i].x << "   "
+                        << cell_list[i].y << "   " << cell_list[i].eta << "   "
+                        << cell_list[i].E_lab.x*unit_convert << "   "
+                        << cell_list[i].E_lab.y*unit_convert << "   "
+                        << cell_list[i].E_lab.z*unit_convert << "   "
+                        << cell_list[i].B_lab.x*unit_convert << "   "
+                        << cell_list[i].B_lab.y*unit_convert << "   "
+                        << cell_list[i].B_lab.z*unit_convert << endl;
+        }
     } else {
         output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
                     << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
                     << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
-    }
-    for (int i = 0; i < EM_fields_array_length; i++) {
-        output_file << scientific << setprecision(8) << setw(15)
-                    << cell_list[i].tau << "   " << cell_list[i].x << "   "
-                    << cell_list[i].y << "   " << cell_list[i].eta << "   "
-                    << cell_list[i].E_lab.x << "   "
-                    << cell_list[i].E_lab.y << "   "
-                    << cell_list[i].E_lab.z << "   "
-                    << cell_list[i].B_lab.x << "   "
-                    << cell_list[i].B_lab.y << "   "
-                    << cell_list[i].B_lab.z << endl;
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            output_file << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].tau << "   " << cell_list[i].x << "   "
+                        << cell_list[i].y << "   " << cell_list[i].eta << "   "
+                        << cell_list[i].E_lab.x << "   "
+                        << cell_list[i].E_lab.y << "   "
+                        << cell_list[i].E_lab.z << "   "
+                        << cell_list[i].B_lab.x << "   "
+                        << cell_list[i].B_lab.y << "   "
+                        << cell_list[i].B_lab.z << endl;
+        }
     }
     output_file.close();
     return;

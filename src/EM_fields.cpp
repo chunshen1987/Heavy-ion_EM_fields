@@ -349,10 +349,8 @@ void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
     getline(FOsurf, input, '\n');
     while (!FOsurf.eof()) {
         stringstream ss(input);
-        ss >> tau_local >> x_local;
+        ss >> x_local >> tau_local >> u_tau_local >> u_x_local;
         y_local = 0.0;
-        u_tau_local = 1.0;
-        u_x_local = 0.0;
         u_y_local = 0.0;
         T_local = 0.2;
         fluidCell cell_local;
@@ -888,6 +886,26 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                         << cell_list[i].drift_u_minus.eta << endl;
         }
         decdat.close();
+    } else if (mode == -1) {
+        ifstream decdat("./results/surface.dat");
+        string input;
+        // print out the header
+        getline(decdat, input, '\n');
+        output_file << input << endl;
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            getline(decdat, input, '\n');
+            output_file << input;
+            output_file << " " << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].drift_u_plus.tau << " "
+                        << cell_list[i].drift_u_plus.x << " "
+                        << cell_list[i].drift_u_plus.y << " "
+                        << cell_list[i].drift_u_plus.eta << " "
+                        << cell_list[i].drift_u_minus.tau << " "
+                        << cell_list[i].drift_u_minus.x << " "
+                        << cell_list[i].drift_u_minus.y << " "
+                        << cell_list[i].drift_u_minus.eta << endl;
+        }
+        decdat.close();
     }
     output_file.close();
 }
@@ -913,6 +931,8 @@ void EM_fields::calculate_charge_drifting_velocity() {
     double *drift_u_minus = new double[4];
     double q_array[2] = {1.0, -1.0};
 
+    ofstream check("results/check_lrf_velocity.dat");
+    check << "#tau  x  y  eta  vx  vy  vz" << endl;
     // loop over evey fluid cell
     for (int i = 0; i < EM_fields_array_length; i++) {
         // we first boost the EM fields to local rest frame of the fluid cell
@@ -979,6 +999,13 @@ void EM_fields::calculate_charge_drifting_velocity() {
             drift_u[j][1] = gamma*delta_v_x;
             drift_u[j][2] = gamma*delta_v_y;
             drift_u[j][3] = gamma*delta_v_z;
+            if (j == 0) {
+                check << scientific << setw(18) << setprecision(8)
+                      << cell_list[i].tau << "  " << cell_list[i].x << "  "
+                      << cell_list[i].y << "  " << cell_list[i].eta << "  "
+                      << delta_v_x << "  " << delta_v_y << "  " << delta_v_z
+                      << endl;
+            }
         }
 
         for (int l = 0; l < 4; l++) {
@@ -1014,6 +1041,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
         cell_list[i].drift_u_minus.y = drift_u_minus[2];
         cell_list[i].drift_u_minus.eta = drift_u_minus_eta;
     }
+    check.close();
 
     // clean up
     for (int i = 0; i < 2; i++) {
@@ -1045,7 +1073,15 @@ void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
 
     u_mu[0] = gamma*(ene - vp);
     for (int i = 1; i < 4; i++) {
-        u_mu[i] = u_mu[i] + (gamma_m_1*vp/v2 - gamma*ene)*v[i-1];
+        u_mu[i] = u_mu[i] + (gamma_m_1*vp/(v2+1e-15) - gamma*ene)*v[i-1];
+        if (isnan(u_mu[i])) {
+            cout << "Error:lorentz_transform_vector_in_place: u is nan"
+                 << endl;
+            cout << "gamma-1=" << gamma_m_1 << ", vp=" << vp
+                 << ", v2=" << v2 << ", ene=" << ene << ", v=" << v[i-1]
+                 << endl;
+            exit(1);
+        }
     }
 }
 

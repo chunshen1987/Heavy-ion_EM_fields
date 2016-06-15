@@ -1,4 +1,4 @@
-mode = 4                  # 0: compute EM fields in the transverse plane
+mode = -1                 # 0: compute EM fields in the transverse plane
                           # 1: compute EM fields at the freeze-out surface
                           # 2: compute EM fields as a function of proper time
                           # 3: compute EM fields at the freeze-out surface
@@ -10,9 +10,9 @@ mode = 4                  # 0: compute EM fields in the transverse plane
 turn_on_bulk = 0          # whether the hypersurface file from hydro
                           # includes bulk pressure
 
-atomic_number = 197       # the atomic number of the collding nucleus
-number_of_proton = 79     # number of protons inside the nucleus
-ecm = 7.7                 # [GeV] collision energy
+atomic_number = 1       # the atomic number of the collding nucleus
+number_of_proton = 82     # number of protons inside the nucleus
+ecm = 2760                 # [GeV] collision energy
 
 nucleon_density_grid_size = 301  # the grid size of the nucleon density profile
 nucleon_density_grid_dx = 0.1    # [fm] the grid spacing of the nucleon density 

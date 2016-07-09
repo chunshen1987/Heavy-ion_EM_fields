@@ -722,7 +722,7 @@ void EM_fields::output_EM_fields(string filename) {
         output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
                     << "E_x[1/fm^2]  E_y[1/fm^2]  E_z[1/fm^2]  "
                     << "B_x[1/fm^2]  B_y[1/fm^2]  B_z[1/fm^2]" << endl;
-        double unit_convert = 1./(hbarCsq*sqrt(4.*M_PI*alpha_EM));
+        double unit_convert = 1./(hbarCsq*sqrt(alpha_EM*4*M_PI));
         for (int i = 0; i < EM_fields_array_length; i++) {
             output_file << scientific << setprecision(8) << setw(15)
                         << cell_list[i].tau << "   " << cell_list[i].x << "   "
@@ -940,10 +940,14 @@ void EM_fields::calculate_charge_drifting_velocity() {
     }
     double *drift_u_plus = new double[4];
     double *drift_u_minus = new double[4];
-    double q_array[2] = {1.0, -1.0};
+    double q_array[2] = {2./3., -1.0};
 
     ofstream check("results/check_lrf_velocity.dat");
+    ofstream check2("results/check_lrf_EMfields.dat");
     check << "#tau  x  y  eta  vx  vy  vz" << endl;
+    check2 << "#tau  x  y  eta  Ex[1/fm^2]  Ey[1/fm^2]  Ez[1/fm^2]  "
+           << "Bx[1/fm^2]  By[1/fm^2]  Bz[1/fm^2]"
+           << endl;
     // loop over evey fluid cell
     for (int i = 0; i < EM_fields_array_length; i++) {
         // we first boost the EM fields to local rest frame of the fluid cell
@@ -957,6 +961,16 @@ void EM_fields::calculate_charge_drifting_velocity() {
         beta[1] = cell_list[i].beta.y;
         beta[2] = cell_list[i].beta.z;
         Lorentz_boost_EM_fields(E_lab, B_lab, beta, E_lrf, B_lrf);
+        double unit_convert = 1./(hbarCsq*sqrt(alpha_EM*4*M_PI));
+        check2 << scientific << setw(18) << setprecision(8)
+               << cell_list[i].tau << "  " << cell_list[i].x << "  "
+               << cell_list[i].y << "  " << cell_list[i].eta << "  "
+               << E_lrf[0]*unit_convert << "  "
+               << E_lrf[1]*unit_convert << "  "
+               << E_lrf[2]*unit_convert << "  "
+               << B_lrf[0]*unit_convert << "  "
+               << B_lrf[1]*unit_convert << "  "
+               << B_lrf[2]*unit_convert << endl;
 
         // we calculate the drifting velocity in the local rest frame
         double mu_m = cell_list[i].mu_m;
@@ -1053,6 +1067,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
         cell_list[i].drift_u_minus.eta = drift_u_minus_eta;
     }
     check.close();
+    check2.close();
 
     // clean up
     for (int i = 0; i < 2; i++) {

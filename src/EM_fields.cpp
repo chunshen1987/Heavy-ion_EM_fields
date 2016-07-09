@@ -17,6 +17,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     initialization_status = 0;
     paraRdr = paraRdr_in;
 
+    debug_flag = paraRdr->getVal("debug_flag");
     mode = paraRdr->getVal("mode");
     verbose_level = paraRdr->getVal("verbose_level");
     turn_on_bulk = paraRdr->getVal("turn_on_bulk");
@@ -134,9 +135,9 @@ void EM_fields::read_in_densities(string path) {
     ostringstream spectator_2_filename;
     if (mode == -1) {
         spectator_1_filename << path
-                         << "/spectator_density_A_disk.dat";
+                             << "/spectator_density_A_disk.dat";
         spectator_2_filename << path
-                         << "/spectator_density_B_disk.dat";
+                             << "/spectator_density_B_disk.dat";
     } else {
         spectator_1_filename << path
                              << "/spectator_density_A_fromSd_order_2.dat";
@@ -538,7 +539,8 @@ void EM_fields::calculate_EM_fields() {
         double temp_sum_By_spectator = 0.0e0;
 
         double z_local_spectator_1 = field_tau*sinh(spectator_rap - field_eta);
-        double z_local_spectator_2 = field_tau*sinh(-spectator_rap - field_eta);
+        double z_local_spectator_2 = (
+                                field_tau*sinh(-spectator_rap - field_eta));
         double z_local_spectator_1_sq = (z_local_spectator_1
                                          *z_local_spectator_1);
         double z_local_spectator_2_sq = (z_local_spectator_2
@@ -942,12 +944,15 @@ void EM_fields::calculate_charge_drifting_velocity() {
     double *drift_u_minus = new double[4];
     double q_array[2] = {2./3., -1.0};
 
-    ofstream check("results/check_lrf_velocity.dat");
-    ofstream check2("results/check_lrf_EMfields.dat");
-    check << "#tau  x  y  eta  vx  vy  vz" << endl;
-    check2 << "#tau  x  y  eta  Ex[1/fm^2]  Ey[1/fm^2]  Ez[1/fm^2]  "
-           << "Bx[1/fm^2]  By[1/fm^2]  Bz[1/fm^2]"
-           << endl;
+    ofstream check, check2;
+    if (debug_flag == 1) {
+        check.open("results/check_lrf_velocity.dat", ios::out);
+        check2.open("results/check_lrf_EMfields.dat", ios::out);
+        check << "#tau  x  y  eta  vx  vy  vz" << endl;
+        check2 << "#tau  x  y  eta  Ex[1/fm^2]  Ey[1/fm^2]  Ez[1/fm^2]  "
+               << "Bx[1/fm^2]  By[1/fm^2]  Bz[1/fm^2]"
+               << endl;
+    }
     // loop over evey fluid cell
     for (int i = 0; i < EM_fields_array_length; i++) {
         // we first boost the EM fields to local rest frame of the fluid cell
@@ -961,16 +966,19 @@ void EM_fields::calculate_charge_drifting_velocity() {
         beta[1] = cell_list[i].beta.y;
         beta[2] = cell_list[i].beta.z;
         Lorentz_boost_EM_fields(E_lab, B_lab, beta, E_lrf, B_lrf);
+        // Lorentz_boost_EM_fields_tensor(E_lab, B_lab, beta, E_lrf, B_lrf);
         double unit_convert = 1./(hbarCsq*sqrt(alpha_EM*4*M_PI));
-        check2 << scientific << setw(18) << setprecision(8)
-               << cell_list[i].tau << "  " << cell_list[i].x << "  "
-               << cell_list[i].y << "  " << cell_list[i].eta << "  "
-               << E_lrf[0]*unit_convert << "  "
-               << E_lrf[1]*unit_convert << "  "
-               << E_lrf[2]*unit_convert << "  "
-               << B_lrf[0]*unit_convert << "  "
-               << B_lrf[1]*unit_convert << "  "
-               << B_lrf[2]*unit_convert << endl;
+        if (debug_flag == 1) {
+            check2 << scientific << setw(18) << setprecision(8)
+                   << cell_list[i].tau << "  " << cell_list[i].x << "  "
+                   << cell_list[i].y << "  " << cell_list[i].eta << "  "
+                   << E_lrf[0]*unit_convert << "  "
+                   << E_lrf[1]*unit_convert << "  "
+                   << E_lrf[2]*unit_convert << "  "
+                   << B_lrf[0]*unit_convert << "  "
+                   << B_lrf[1]*unit_convert << "  "
+                   << B_lrf[2]*unit_convert << endl;
+        }
 
         // we calculate the drifting velocity in the local rest frame
         double mu_m = cell_list[i].mu_m;
@@ -1024,12 +1032,14 @@ void EM_fields::calculate_charge_drifting_velocity() {
             drift_u[j][1] = gamma*delta_v_x;
             drift_u[j][2] = gamma*delta_v_y;
             drift_u[j][3] = gamma*delta_v_z;
-            if (j == 0) {
-                check << scientific << setw(18) << setprecision(8)
-                      << cell_list[i].tau << "  " << cell_list[i].x << "  "
-                      << cell_list[i].y << "  " << cell_list[i].eta << "  "
-                      << delta_v_x << "  " << delta_v_y << "  " << delta_v_z
-                      << endl;
+            if (debug_flag == 1) {
+                if (j == 0) {
+                    check << scientific << setw(18) << setprecision(8)
+                          << cell_list[i].tau << "  " << cell_list[i].x << "  "
+                          << cell_list[i].y << "  " << cell_list[i].eta << "  "
+                          << delta_v_x << "  " << delta_v_y << "  "
+                          << delta_v_z << endl;
+                }
             }
         }
 
@@ -1066,8 +1076,10 @@ void EM_fields::calculate_charge_drifting_velocity() {
         cell_list[i].drift_u_minus.y = drift_u_minus[2];
         cell_list[i].drift_u_minus.eta = drift_u_minus_eta;
     }
-    check.close();
-    check2.close();
+    if (debug_flag == 1) {
+        check.close();
+        check2.close();
+    }
 
     // clean up
     for (int i = 0; i < 2; i++) {
@@ -1137,6 +1149,70 @@ void EM_fields::Lorentz_boost_EM_fields(double *E_lab, double *B_lab,
         B_prime[i] = (gamma*(B_lab[i] - beta_cross_E[i])
                       - gamma_factor*beta_dot_B*beta[i]);
     }
+}
+
+void EM_fields::Lorentz_boost_EM_fields_tensor(double *E_lab, double *B_lab,
+        double *beta, double *E_prime, double *B_prime) {
+    // this function perform Lorentz boost for E_lab and B_lab fields
+    // to a frame with velocity v = beta;
+    // the results are stored in E_prime and B_prime vectors
+    double Fmn[4][4];
+    for (int i = 0; i < 4; i++) {
+        Fmn[i][i] = 0.0;
+    }
+    Fmn[0][1] = E_lab[0];
+    Fmn[0][2] = E_lab[1];
+    Fmn[0][3] = E_lab[2];
+    Fmn[1][2] = B_lab[2];
+    Fmn[1][3] = -B_lab[1];
+    Fmn[2][3] = B_lab[0];
+    for (int i = 0; i < 4; i++) {
+        for (int j = i+1; j < 4; j++) {
+            Fmn[j][i] = -Fmn[i][j];
+        }
+    }
+    double Lambda[4][4];
+    double v2 = beta[0]*beta[0] + beta[1]*beta[1] + beta[2]*beta[2];
+    double gamma = 1./sqrt(1. - v2);
+    Lambda[0][0] = gamma;
+    Lambda[0][1] = -gamma*beta[0];
+    Lambda[0][2] = -gamma*beta[1];
+    Lambda[0][3] = -gamma*beta[2];
+    Lambda[1][1] = 1. + beta[0]*beta[0]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[1][2] = beta[0]*beta[1]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[1][3] = beta[0]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[2][2] = 1. + beta[1]*beta[1]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[2][3] = beta[1]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[3][3] = 1. + beta[2]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    for (int i = 0; i < 4; i++) {
+        for (int j = i+1; j < 4; j++) {
+            Lambda[j][i] = Lambda[i][j];
+        }
+    }
+
+    double Fmn_prime[4][4];
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            Fmn_prime[i][j] = 0.0;
+        }
+    }
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            for (int k = 0; k < 4; k++) {
+                for (int l = 0; l < 4; l++) {
+                    Fmn_prime[i][j] += Lambda[i][k]*Lambda[j][l]*Fmn[k][l];
+                }
+            }
+        }
+    }
+
+    E_prime[0] = Fmn_prime[0][1];
+    E_prime[1] = Fmn_prime[0][2];
+    E_prime[2] = Fmn_prime[0][3];
+    B_prime[0] = Fmn_prime[2][3];
+    B_prime[1] = -Fmn_prime[1][3];
+    B_prime[2] = Fmn_prime[1][2];
 }
 
 void EM_fields::cross_product(double *a, double *b, double *c) {

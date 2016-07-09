@@ -28,6 +28,7 @@ struct fluidCell {
 
 class EM_fields {
  private:
+    int debug_flag;
     int mode;
     int verbose_level;
     int turn_on_bulk;
@@ -75,6 +76,9 @@ class EM_fields {
     void lorentz_transform_vector_in_place(double *u_mu, double *v);
     void Lorentz_boost_EM_fields(double *E_lab, double *B_lab, double *beta,
                                  double *E_prime, double *B_prime);
+    void Lorentz_boost_EM_fields_tensor(double *E_lab, double *B_lab,
+                                        double *beta, double *E_prime,
+                                        double *B_prime);
     void cross_product(double *a, double *b, double *c);
 };
 

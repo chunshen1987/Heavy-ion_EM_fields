@@ -7,6 +7,7 @@ mode = -1                 # 0: compute EM fields in the transverse plane
                           #    with MUSIC hypersurface output format
                           # -1: compute EM fields at the freeze-out surface
                           #     with Gubser analytic solution
+debug_flag = 1            # switch to output information for debug
 turn_on_bulk = 0          # whether the hypersurface file from hydro
                           # includes bulk pressure
 

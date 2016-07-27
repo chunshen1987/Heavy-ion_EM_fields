@@ -353,7 +353,7 @@ void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
         ss >> x_local >> tau_local >> u_tau_local >> u_x_local;
         y_local = 0.0;
         u_y_local = 0.0;
-        T_local = 0.2;  // GeV
+        T_local = 0.255;  // GeV
         fluidCell cell_local;
         cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
         if (cell_local.mu_m < 1e-5) {     // mu_m is too small
@@ -1004,6 +1004,32 @@ void EM_fields::calculate_charge_drifting_velocity() {
             double delta_v_z = (
                     qEy*(qBy*qBz - qBx*mu_m) + qEx*(qBx*qBz + qBy*mu_m)
                     + qEz*(qBz*qBz + mu_m*mu_m))*denorm;
+            // check the solutions
+            double check_x = (mu_m*delta_v_x - qBz*delta_v_y + qBy*delta_v_z
+                              - qEx);
+            double check_y = (qBz*delta_v_x + mu_m*delta_v_y - qBx*delta_v_z
+                              - qEy);
+            double check_z = (-qBy*delta_v_x + qBx*delta_v_y + mu_m*delta_v_z
+                              - qEz);
+            if (fabs(check_x) > 1e-15) {
+                cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
+                     << " drifting velocity is not correct!"
+                     << "check_x = " << check_x << endl;
+                exit(1);
+            }
+            if (fabs(check_y) > 1e-15) {
+                cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
+                     << " drifting velocity is not correct!"
+                     << "check_y = " << check_y << endl;
+                exit(1);
+            }
+            if (fabs(check_z) > 1e-15) {
+                cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
+                     << " drifting velocity is not correct!"
+                     << "check_z = " << check_z << endl;
+                exit(1);
+            }
+
             double gamma = 1./sqrt(1. - delta_v_x*delta_v_x
                                    - delta_v_y*delta_v_y
                                    - delta_v_z*delta_v_z);
@@ -1048,14 +1074,16 @@ void EM_fields::calculate_charge_drifting_velocity() {
             drift_u_minus[l] = drift_u[1][l];
         }
 
-        // finally we boost the delta v back to longitudinal comving frame
+        // finally we boost the delta v back to the lab frame
         for (int k = 0; k < 3; k++) {  // prepare the velocity
             beta[k] = - beta[k];
         }
+        // lorentz_transform_vector_with_Lambda(drift_u_plus, beta);
+        // lorentz_transform_vector_with_Lambda(drift_u_minus, beta);
         lorentz_transform_vector_in_place(drift_u_plus, beta);
         lorentz_transform_vector_in_place(drift_u_minus, beta);
 
-        // transform to tau-eta coorrdinate with tilde{u}^eta = tau*u^eta
+        // transform to tau-eta coordinate with tilde{u}^eta = tau*u^eta
         double eta_s = cell_list[i].eta;
         double sinh_eta_s = sinh(eta_s);
         double cosh_eta_s = cosh(eta_s);
@@ -1096,7 +1124,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
 }
 
 void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
-// boost u^mu with velocity v and store the boost vector back in u^mu
+// boost u^mu with velocity v and store the boosted vector back in u^mu
 // v is a 3 vector and u_mu is a 4 vector
     double v2 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
     double vp = v[0]*u_mu[1] + v[1]*u_mu[2] + v[2]*u_mu[3];
@@ -1120,6 +1148,42 @@ void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
                  << endl;
             exit(1);
         }
+    }
+}
+
+void EM_fields::lorentz_transform_vector_with_Lambda(double *u_mu,
+                                                     double *beta) {
+    // boost u^mu with velocity beta and store the boost vectored back in u^mu
+    // beta is a 3 vector and u_mu is a 4 vector
+    // boost is performed using Lorentz boost matrix
+    // define Lambda matrix first
+    double Lambda[4][4];
+    double v2 = beta[0]*beta[0] + beta[1]*beta[1] + beta[2]*beta[2];
+    double gamma = 1./sqrt(1. - v2);
+    Lambda[0][0] = gamma;
+    Lambda[0][1] = -gamma*beta[0];
+    Lambda[0][2] = -gamma*beta[1];
+    Lambda[0][3] = -gamma*beta[2];
+    Lambda[1][1] = 1. + beta[0]*beta[0]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[1][2] = beta[0]*beta[1]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[1][3] = beta[0]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[2][2] = 1. + beta[1]*beta[1]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[2][3] = beta[1]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    Lambda[3][3] = 1. + beta[2]*beta[2]*(gamma - 1.)/(v2 + 1e-15);
+    for (int i = 0; i < 4; i++) {
+        for (int j = i+1; j < 4; j++) {
+            Lambda[j][i] = Lambda[i][j];
+        }
+    }
+
+    double u_mu_new[4] = {0.0, 0.0, 0.0, 0.0};
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            u_mu_new[i] += Lambda[i][j]*u_mu[j];
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        u_mu[i] = u_mu_new[i];
     }
 }
 

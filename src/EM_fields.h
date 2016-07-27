@@ -74,6 +74,7 @@ class EM_fields {
     void output_EM_fields(string filename);
     void output_surface_file_with_drifting_velocity(string filename);
     void lorentz_transform_vector_in_place(double *u_mu, double *v);
+    void lorentz_transform_vector_with_Lambda(double *u_mu, double *beta);
     void Lorentz_boost_EM_fields(double *E_lab, double *B_lab, double *beta,
                                  double *E_prime, double *B_prime);
     void Lorentz_boost_EM_fields_tensor(double *E_lab, double *B_lab,

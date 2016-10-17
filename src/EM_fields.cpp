@@ -73,9 +73,9 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     eta_grid = new double[n_eta];
     sinh_eta_array = new double[n_eta];
     cosh_eta_array = new double[n_eta];
-    double deta = 2.*beam_rapidity/(n_eta - 1.);
+    double deta = 2.*beam_rapidity*0.99/(n_eta - 1.);
     for (int i = 0; i < n_eta; i++) {
-        eta_grid[i] = - beam_rapidity + i*deta;
+        eta_grid[i] = - beam_rapidity*0.99 + i*deta;
         sinh_eta_array[i] = sinh(eta_grid[i]);
         cosh_eta_array[i] = cosh(eta_grid[i]);
     }
@@ -942,7 +942,12 @@ void EM_fields::calculate_charge_drifting_velocity() {
     }
     double *drift_u_plus = new double[4];
     double *drift_u_minus = new double[4];
-    double q_array[2] = {2./3., -1.0};
+    double q_array[] = {2./3., 1./3., -1./3., -2./3.};
+    int q_array_length = sizeof(q_array)/sizeof(double);
+    double **drift_v = new double* [q_array_length];
+    for (int i = 0; i < q_array_length; i++) {
+        drift_v[i] = new double[3];
+    }
 
     ofstream check, check2;
     if (debug_flag == 1) {
@@ -1035,7 +1040,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
                                    - delta_v_z*delta_v_z);
             if (isnan(gamma)) {
                 cout << "Error:EM_fields:calculate_charge_drifting_velocity():"
-                     << " drifting velocity is nan!" << endl;
+                     << " drifting velocity is too large!" << endl;
                 cout << "gamma = " << gamma << ", delta_v_x = " << delta_v_x
                      << ", delta_v_y = " << delta_v_y << ", delta_v_z = "
                      << delta_v_z << endl;
@@ -1054,10 +1059,9 @@ void EM_fields::calculate_charge_drifting_velocity() {
                      << ", eB_lab_z = " << B_lab[2] << endl;
                 exit(1);
             }
-            drift_u[j][0] = gamma;
-            drift_u[j][1] = gamma*delta_v_x;
-            drift_u[j][2] = gamma*delta_v_y;
-            drift_u[j][3] = gamma*delta_v_z;
+            drift_v[j][0] = delta_v_x;
+            drift_v[j][1] = delta_v_y;
+            drift_v[j][2] = delta_v_z;
             if (debug_flag == 1) {
                 if (j == 0) {
                     check << scientific << setw(18) << setprecision(8)
@@ -1069,9 +1073,34 @@ void EM_fields::calculate_charge_drifting_velocity() {
             }
         }
 
-        for (int l = 0; l < 4; l++) {
-            drift_u_plus[l] = drift_u[0][l];
-            drift_u_minus[l] = drift_u[1][l];
+        for (int l = 1; l < 4; l++) {
+            drift_u_plus[l] = (drift_v[0][l-1] + drift_v[2][l-1])/2.;
+            drift_u_minus[l] = (drift_v[1][l-1] + drift_v[3][l-1])/2.;
+        }
+        drift_u_plus[0] = 1./sqrt(1. - drift_u_plus[1]*drift_u_plus[1]
+                                  - drift_u_plus[2]*drift_u_plus[2]
+                                  - drift_u_plus[3]*drift_u_plus[3]);
+        if (isnan(drift_u_plus[0])) {
+            cout << "EM_fields::calculate_charge_drifting_velocity:"
+                 << "drift_u_plus[0] is nan!" << endl;
+            cout << "vx = " << drift_u_plus[1] << ", vy = " << drift_u_plus[2]
+                 << ", vz = " << drift_u_plus[3] << endl;
+            exit(1);
+        }
+        drift_u_minus[0] = 1./sqrt(1. - drift_u_minus[1]*drift_u_minus[1]
+                                   - drift_u_minus[2]*drift_u_minus[2]
+                                   - drift_u_minus[3]*drift_u_minus[3]);
+        if (isnan(drift_u_minus[0])) {
+            cout << "EM_fields::calculate_charge_drifting_velocity:"
+                 << "drift_u_minus[0] is nan!" << endl;
+            cout << "vx = " << drift_u_minus[1]
+                 << ", vy = " << drift_u_minus[2]
+                 << ", vz = " << drift_u_minus[3] << endl;
+            exit(1);
+        }
+        for (int l = 1; l < 4; l++) {
+            drift_u_plus[l] *= drift_u_plus[0];
+            drift_u_minus[l] *= drift_u_minus[0];
         }
 
         // finally we boost the delta v back to the lab frame
@@ -1110,10 +1139,10 @@ void EM_fields::calculate_charge_drifting_velocity() {
     }
 
     // clean up
-    for (int i = 0; i < 2; i++) {
-        delete [] drift_u[i];
+    for (int i = 0; i < q_array_length; i++) {
+        delete [] drift_v[i];
     }
-    delete [] drift_u;
+    delete [] drift_v;
     delete [] drift_u_plus;
     delete [] drift_u_minus;
     delete [] E_lab;

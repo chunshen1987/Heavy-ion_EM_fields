@@ -785,9 +785,9 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             ss >> bulkPi;
             for (int j = 0; j < n_eta; j++) {
                 double u_t = (
-                    1./sqrt(1. - cell_list[idx].beta.x*cell_list[i].beta.x
-                               - cell_list[idx].beta.y*cell_list[i].beta.y
-                               - cell_list[idx].beta.z*cell_list[i].beta.z));
+                    1./sqrt(1. - cell_list[idx].beta.x*cell_list[idx].beta.x
+                               - cell_list[idx].beta.y*cell_list[idx].beta.y
+                               - cell_list[idx].beta.z*cell_list[idx].beta.z));
                 double u_x = cell_list[idx].beta.x*u_t;
                 double u_y = cell_list[idx].beta.y*u_t;
                 double u_z = cell_list[idx].beta.z*u_t;
@@ -989,7 +989,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
         double mu_m = cell_list[i].mu_m;
 
         // solve v for moving charges
-        for (int j = 0; j < 2; j++) {
+        for (int j = 0; j < q_array_length; j++) {
             double q = q_array[j];
             double qEx = q*E_lrf[0];
             double qEy = q*E_lrf[1];
@@ -1085,6 +1085,12 @@ void EM_fields::calculate_charge_drifting_velocity() {
                  << "drift_u_plus[0] is nan!" << endl;
             cout << "vx = " << drift_u_plus[1] << ", vy = " << drift_u_plus[2]
                  << ", vz = " << drift_u_plus[3] << endl;
+            cout << "v[0][x] = " << drift_v[0][0]
+                 << ", v[0][y] = " << drift_v[0][1]
+                 << ", v[0][z] = " << drift_v[0][2] << endl;
+            cout << "v[2][x] = " << drift_v[2][0]
+                 << ", v[2][y] = " << drift_v[2][1]
+                 << ", v[2][z] = " << drift_v[2][2] << endl;
             exit(1);
         }
         drift_u_minus[0] = 1./sqrt(1. - drift_u_minus[1]*drift_u_minus[1]
@@ -1096,6 +1102,12 @@ void EM_fields::calculate_charge_drifting_velocity() {
             cout << "vx = " << drift_u_minus[1]
                  << ", vy = " << drift_u_minus[2]
                  << ", vz = " << drift_u_minus[3] << endl;
+            cout << "v[1][x] = " << drift_v[1][0]
+                 << ", v[1][y] = " << drift_v[1][1]
+                 << ", v[1][z] = " << drift_v[1][2] << endl;
+            cout << "v[3][x] = " << drift_v[3][0]
+                 << ", v[3][y] = " << drift_v[3][1]
+                 << ", v[3][z] = " << drift_v[3][2] << endl;
             exit(1);
         }
         for (int l = 1; l < 4; l++) {

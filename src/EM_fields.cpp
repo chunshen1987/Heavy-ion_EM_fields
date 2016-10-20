@@ -1074,8 +1074,8 @@ void EM_fields::calculate_charge_drifting_velocity() {
         }
 
         for (int l = 1; l < 4; l++) {
-            drift_u_plus[l] = (drift_v[0][l-1] + drift_v[2][l-1])/2.;
-            drift_u_minus[l] = (drift_v[1][l-1] + drift_v[3][l-1])/2.;
+            drift_u_plus[l] = (drift_v[0][l-1] + drift_v[1][l-1])/2.;
+            drift_u_minus[l] = (drift_v[2][l-1] + drift_v[3][l-1])/2.;
         }
         drift_u_plus[0] = 1./sqrt(1. - drift_u_plus[1]*drift_u_plus[1]
                                   - drift_u_plus[2]*drift_u_plus[2]
@@ -1088,9 +1088,9 @@ void EM_fields::calculate_charge_drifting_velocity() {
             cout << "v[0][x] = " << drift_v[0][0]
                  << ", v[0][y] = " << drift_v[0][1]
                  << ", v[0][z] = " << drift_v[0][2] << endl;
-            cout << "v[2][x] = " << drift_v[2][0]
-                 << ", v[2][y] = " << drift_v[2][1]
-                 << ", v[2][z] = " << drift_v[2][2] << endl;
+            cout << "v[2][x] = " << drift_v[1][0]
+                 << ", v[2][y] = " << drift_v[1][1]
+                 << ", v[2][z] = " << drift_v[1][2] << endl;
             exit(1);
         }
         drift_u_minus[0] = 1./sqrt(1. - drift_u_minus[1]*drift_u_minus[1]
@@ -1102,9 +1102,9 @@ void EM_fields::calculate_charge_drifting_velocity() {
             cout << "vx = " << drift_u_minus[1]
                  << ", vy = " << drift_u_minus[2]
                  << ", vz = " << drift_u_minus[3] << endl;
-            cout << "v[1][x] = " << drift_v[1][0]
-                 << ", v[1][y] = " << drift_v[1][1]
-                 << ", v[1][z] = " << drift_v[1][2] << endl;
+            cout << "v[1][x] = " << drift_v[2][0]
+                 << ", v[1][y] = " << drift_v[2][1]
+                 << ", v[1][z] = " << drift_v[2][2] << endl;
             cout << "v[3][x] = " << drift_v[3][0]
                  << ", v[3][y] = " << drift_v[3][1]
                  << ", v[3][z] = " << drift_v[3][2] << endl;

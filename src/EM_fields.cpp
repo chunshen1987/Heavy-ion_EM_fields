@@ -769,6 +769,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
         double pi00, pi01, pi02, pi11, pi12, pi22, pi33;
         double bulkPi;
         int idx = 0;
+        double deta = cell_list[1].eta - cell_list[0].eta;
         for (int i = 0; i < EM_fields_array_length/n_eta; i++) {
             // read in other hyper-surface information
             getline(decdat, input, '\n');
@@ -799,8 +800,8 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                             << cell_list[idx].x << "  "
                             << cell_list[idx].y << "  "
                             << cell_list[idx].eta << "  "
-                            << da0 << "  " << da1 << "  " << da2 << "  "
-                            << da3 << "  "
+                            << da0*deta << "  " << da1*deta << "  "
+                            << da2*deta << "  " << da3*deta << "  "
                             << u_tau << "  " << u_x << "  " << u_y << "  "
                             << u_eta << "  "
                             << Edec << "  " << Tdec << "  " << muB << "  "
@@ -837,6 +838,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
         double pi00, pi01, pi02, pi03, pi11, pi12, pi13, pi22, pi23, pi33;
         double bulkPi;
         int idx = 0;
+        double deta = cell_list[1].eta - cell_list[0].eta;
         for (int i = 0; i < EM_fields_array_length/n_eta; i++) {
             getline(decdat, input, '\n');
             stringstream ss(input);
@@ -855,8 +857,8 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                             << cell_list[idx].x << "  "
                             << cell_list[idx].y << "  "
                             << cell_list[idx].eta << "  "
-                            << da0 << "  " << da1 << "  " << da2 << "  "
-                            << da3 << "  "
+                            << da0*deta << "  " << da1*deta << "  "
+                            << da2*deta << "  " << da3*deta << "  "
                             << u_tau << "  " << u_x << "  " << u_y << "  "
                             << u_eta << "  "
                             << Edec << "  " << Tdec << "  " << muB << "  "

@@ -24,6 +24,8 @@ struct fluidCell {
     vector3 E_lab, B_lab;       // E and B fields in the lab frame
     vector4 drift_u_plus;       // drifting 4 velocity induced by EM fields
     vector4 drift_u_minus;
+    vector4 drift_u_plus_2;     // drifting 4 velocity induced by EM fields
+    vector4 drift_u_minus_2;
 };
 
 class EM_fields {

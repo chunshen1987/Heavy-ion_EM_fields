@@ -822,7 +822,15 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                             << cell_list[idx].drift_u_minus.tau << "  "
                             << cell_list[idx].drift_u_minus.x << "  "
                             << cell_list[idx].drift_u_minus.y << "  "
-                            << cell_list[idx].drift_u_minus.eta << "  ";
+                            << cell_list[idx].drift_u_minus.eta << "  "
+                            << cell_list[idx].drift_u_plus_2.tau << "  "
+                            << cell_list[idx].drift_u_plus_2.x << "  "
+                            << cell_list[idx].drift_u_plus_2.y << "  "
+                            << cell_list[idx].drift_u_plus_2.eta << "  "
+                            << cell_list[idx].drift_u_minus_2.tau << "  "
+                            << cell_list[idx].drift_u_minus_2.x << "  "
+                            << cell_list[idx].drift_u_minus_2.y << "  "
+                            << cell_list[idx].drift_u_minus_2.eta << "  ";
                 output_file << endl;
                 idx++;
             }
@@ -878,7 +886,15 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                             << cell_list[idx].drift_u_minus.tau << "  "
                             << cell_list[idx].drift_u_minus.x << "  "
                             << cell_list[idx].drift_u_minus.y << "  "
-                            << cell_list[idx].drift_u_minus.eta;
+                            << cell_list[idx].drift_u_minus.eta << "  "
+                            << cell_list[idx].drift_u_plus_2.tau << "  "
+                            << cell_list[idx].drift_u_plus_2.x << "  "
+                            << cell_list[idx].drift_u_plus_2.y << "  "
+                            << cell_list[idx].drift_u_plus_2.eta << "  "
+                            << cell_list[idx].drift_u_minus_2.tau << "  "
+                            << cell_list[idx].drift_u_minus_2.x << "  "
+                            << cell_list[idx].drift_u_minus_2.y << "  "
+                            << cell_list[idx].drift_u_minus_2.eta;
                 output_file << endl;
                 idx++;
             }
@@ -891,14 +907,22 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             getline(decdat, input, '\n');
             output_file << input;
             output_file << " " << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].drift_u_plus.tau << " "
-                        << cell_list[i].drift_u_plus.x << " "
-                        << cell_list[i].drift_u_plus.y << " "
-                        << cell_list[i].drift_u_plus.eta << " "
-                        << cell_list[i].drift_u_minus.tau << " "
-                        << cell_list[i].drift_u_minus.x << " "
-                        << cell_list[i].drift_u_minus.y << " "
-                        << cell_list[i].drift_u_minus.eta << endl;
+                        << cell_list[i].drift_u_plus.tau << "  "
+                        << cell_list[i].drift_u_plus.x << "  "
+                        << cell_list[i].drift_u_plus.y << "  "
+                        << cell_list[i].drift_u_plus.eta << "  "
+                        << cell_list[i].drift_u_minus.tau << "  "
+                        << cell_list[i].drift_u_minus.x << "  "
+                        << cell_list[i].drift_u_minus.y << "  "
+                        << cell_list[i].drift_u_minus.eta << "  "
+                        << cell_list[i].drift_u_plus_2.tau << "  "
+                        << cell_list[i].drift_u_plus_2.x << "  "
+                        << cell_list[i].drift_u_plus_2.y << "  "
+                        << cell_list[i].drift_u_plus_2.eta << "  "
+                        << cell_list[i].drift_u_minus_2.tau << "  "
+                        << cell_list[i].drift_u_minus_2.x << "  "
+                        << cell_list[i].drift_u_minus_2.y << "  "
+                        << cell_list[i].drift_u_minus_2.eta << endl;
         }
         decdat.close();
     } else if (mode == -1) {
@@ -911,14 +935,22 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             getline(decdat, input, '\n');
             output_file << input;
             output_file << " " << scientific << setprecision(8) << setw(15)
-                        << cell_list[i].drift_u_plus.tau << " "
-                        << cell_list[i].drift_u_plus.x << " "
-                        << cell_list[i].drift_u_plus.y << " "
-                        << cell_list[i].drift_u_plus.eta << " "
-                        << cell_list[i].drift_u_minus.tau << " "
-                        << cell_list[i].drift_u_minus.x << " "
-                        << cell_list[i].drift_u_minus.y << " "
-                        << cell_list[i].drift_u_minus.eta << endl;
+                        << cell_list[i].drift_u_plus.tau << "  "
+                        << cell_list[i].drift_u_plus.x << "  "
+                        << cell_list[i].drift_u_plus.y << "  "
+                        << cell_list[i].drift_u_plus.eta << "  "
+                        << cell_list[i].drift_u_minus.tau << "  "
+                        << cell_list[i].drift_u_minus.x << "  "
+                        << cell_list[i].drift_u_minus.y << "  "
+                        << cell_list[i].drift_u_minus.eta << "  "
+                        << cell_list[i].drift_u_plus_2.tau << "  "
+                        << cell_list[i].drift_u_plus_2.x << "  "
+                        << cell_list[i].drift_u_plus_2.y << "  "
+                        << cell_list[i].drift_u_plus_2.eta << "  "
+                        << cell_list[i].drift_u_minus_2.tau << "  "
+                        << cell_list[i].drift_u_minus_2.x << "  "
+                        << cell_list[i].drift_u_minus_2.y << "  "
+                        << cell_list[i].drift_u_minus_2.eta << endl;
         }
         decdat.close();
     }
@@ -938,13 +970,13 @@ void EM_fields::calculate_charge_drifting_velocity() {
     double *beta = new double[3];
     double *E_lrf = new double[3];
     double *B_lrf = new double[3];
-    double **drift_u = new double* [2];
-    for (int i = 0; i < 2; i++) {
-        drift_u[i] = new double[4];
-    }
+
     double *drift_u_plus = new double[4];
     double *drift_u_minus = new double[4];
-    double q_array[] = {2./3., 1./3., -1./3., -2./3.};
+    double *drift_u_plus_2 = new double[4];
+    double *drift_u_minus_2 = new double[4];
+
+    double q_array[] = {1.0, -1.0, 2.0, -2.0};
     int q_array_length = sizeof(q_array)/sizeof(double);
     double **drift_v = new double* [q_array_length];
     for (int i = 0; i < q_array_length; i++) {
@@ -1076,8 +1108,10 @@ void EM_fields::calculate_charge_drifting_velocity() {
         }
 
         for (int l = 1; l < 4; l++) {
-            drift_u_plus[l] = (drift_v[0][l-1] + drift_v[1][l-1])/2.;
-            drift_u_minus[l] = (drift_v[2][l-1] + drift_v[3][l-1])/2.;
+            drift_u_plus[l] = drift_v[0][l-1];
+            drift_u_minus[l] = drift_v[1][l-1];
+            drift_u_plus_2[l] = drift_v[2][l-1];
+            drift_u_minus_2[l] = drift_v[3][l-1];
         }
         drift_u_plus[0] = 1./sqrt(1. - drift_u_plus[1]*drift_u_plus[1]
                                   - drift_u_plus[2]*drift_u_plus[2]
@@ -1090,9 +1124,6 @@ void EM_fields::calculate_charge_drifting_velocity() {
             cout << "v[0][x] = " << drift_v[0][0]
                  << ", v[0][y] = " << drift_v[0][1]
                  << ", v[0][z] = " << drift_v[0][2] << endl;
-            cout << "v[2][x] = " << drift_v[1][0]
-                 << ", v[2][y] = " << drift_v[1][1]
-                 << ", v[2][z] = " << drift_v[1][2] << endl;
             exit(1);
         }
         drift_u_minus[0] = 1./sqrt(1. - drift_u_minus[1]*drift_u_minus[1]
@@ -1104,9 +1135,35 @@ void EM_fields::calculate_charge_drifting_velocity() {
             cout << "vx = " << drift_u_minus[1]
                  << ", vy = " << drift_u_minus[2]
                  << ", vz = " << drift_u_minus[3] << endl;
-            cout << "v[1][x] = " << drift_v[2][0]
-                 << ", v[1][y] = " << drift_v[2][1]
-                 << ", v[1][z] = " << drift_v[2][2] << endl;
+            cout << "v[1][x] = " << drift_v[1][0]
+                 << ", v[1][y] = " << drift_v[1][1]
+                 << ", v[1][z] = " << drift_v[1][2] << endl;
+            exit(1);
+        }
+        drift_u_plus_2[0] = 1./sqrt(1. - drift_u_plus_2[1]*drift_u_plus_2[1]
+                                    - drift_u_plus_2[2]*drift_u_plus_2[2]
+                                    - drift_u_plus_2[3]*drift_u_plus_2[3]);
+        if (isnan(drift_u_plus_2[0])) {
+            cout << "EM_fields::calculate_charge_drifting_velocity:"
+                 << "drift_u_plus_2[0] is nan!" << endl;
+            cout << "vx = " << drift_u_plus_2[1]
+                 << ", vy = " << drift_u_plus_2[2]
+                 << ", vz = " << drift_u_plus_2[3] << endl;
+            cout << "v[2][x] = " << drift_v[2][0]
+                 << ", v[2][y] = " << drift_v[2][1]
+                 << ", v[2][z] = " << drift_v[2][2] << endl;
+            exit(1);
+        }
+        drift_u_minus_2[0] = 1./sqrt(1. - drift_u_minus_2[1]*drift_u_minus_2[1]
+                                        - drift_u_minus_2[2]*drift_u_minus_2[2]
+                                        - drift_u_minus_2[3]*drift_u_minus_2[3]
+                                    );
+        if (isnan(drift_u_minus_2[0])) {
+            cout << "EM_fields::calculate_charge_drifting_velocity:"
+                 << "drift_u_minus_2[0] is nan!" << endl;
+            cout << "vx = " << drift_u_minus_2[1]
+                 << ", vy = " << drift_u_minus_2[2]
+                 << ", vz = " << drift_u_minus_2[3] << endl;
             cout << "v[3][x] = " << drift_v[3][0]
                  << ", v[3][y] = " << drift_v[3][1]
                  << ", v[3][z] = " << drift_v[3][2] << endl;
@@ -1115,6 +1172,8 @@ void EM_fields::calculate_charge_drifting_velocity() {
         for (int l = 1; l < 4; l++) {
             drift_u_plus[l] *= drift_u_plus[0];
             drift_u_minus[l] *= drift_u_minus[0];
+            drift_u_plus_2[l] *= drift_u_plus_2[0];
+            drift_u_minus_2[l] *= drift_u_minus_2[0];
         }
 
         // finally we boost the delta v back to the lab frame
@@ -1125,6 +1184,8 @@ void EM_fields::calculate_charge_drifting_velocity() {
         // lorentz_transform_vector_with_Lambda(drift_u_minus, beta);
         lorentz_transform_vector_in_place(drift_u_plus, beta);
         lorentz_transform_vector_in_place(drift_u_minus, beta);
+        lorentz_transform_vector_in_place(drift_u_plus_2, beta);
+        lorentz_transform_vector_in_place(drift_u_minus_2, beta);
 
         // transform to tau-eta coordinate with tilde{u}^eta = tau*u^eta
         double eta_s = cell_list[i].eta;
@@ -1146,6 +1207,22 @@ void EM_fields::calculate_charge_drifting_velocity() {
         cell_list[i].drift_u_minus.x = drift_u_minus[1];
         cell_list[i].drift_u_minus.y = drift_u_minus[2];
         cell_list[i].drift_u_minus.eta = drift_u_minus_eta;
+        double drift_u_plus_2_tau = (
+                drift_u_plus_2[0]*cosh_eta_s - drift_u_plus_2[3]*sinh_eta_s);
+        double drift_u_plus_2_eta = (
+                - drift_u_plus_2[0]*sinh_eta_s + drift_u_plus_2[3]*cosh_eta_s);
+        cell_list[i].drift_u_plus_2.tau = drift_u_plus_2_tau;
+        cell_list[i].drift_u_plus_2.x = drift_u_plus_2[1];
+        cell_list[i].drift_u_plus_2.y = drift_u_plus_2[2];
+        cell_list[i].drift_u_plus_2.eta = drift_u_plus_2_eta;
+        double drift_u_minus_2_tau = (drift_u_minus_2[0]*cosh_eta_s
+                                      - drift_u_minus_2[3]*sinh_eta_s);
+        double drift_u_minus_2_eta = (- drift_u_minus_2[0]*sinh_eta_s
+                                      + drift_u_minus_2[3]*cosh_eta_s);
+        cell_list[i].drift_u_minus_2.tau = drift_u_minus_2_tau;
+        cell_list[i].drift_u_minus_2.x = drift_u_minus_2[1];
+        cell_list[i].drift_u_minus_2.y = drift_u_minus_2[2];
+        cell_list[i].drift_u_minus_2.eta = drift_u_minus_2_eta;
     }
     if (debug_flag == 1) {
         check.close();
@@ -1159,6 +1236,8 @@ void EM_fields::calculate_charge_drifting_velocity() {
     delete [] drift_v;
     delete [] drift_u_plus;
     delete [] drift_u_minus;
+    delete [] drift_u_plus_2;
+    delete [] drift_u_minus_2;
     delete [] E_lab;
     delete [] B_lab;
     delete [] E_lrf;

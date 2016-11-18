@@ -1,5 +1,6 @@
 // Copyright 2016 Chun Shen
 #include <stdlib.h>
+#include <omp.h>
 
 #include <iostream>
 #include <sstream>
@@ -521,20 +522,27 @@ void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
 }
 
 void EM_fields::calculate_EM_fields() {
-    // this function calculates E and B fields
-    double sigma = 0.023;       // electric conductivity [fm^-1]
-    double cosh_spectator_rap = cosh(spectator_rap);
-    double sinh_spectator_rap = sinh(spectator_rap);
+    int i_array;
+    #pragma omp parallel private(i_array)
+    {
+    #pragma omp for
+    for (i_array = 0; i_array < EM_fields_array_length; i_array++) {
+        // cout << "Thread " << omp_get_thread_num()
+        //      << "executes loop iteraction ieta = " << i_array << endl;
+        // this function calculates E and B fields
+        double sigma = 0.023;       // electric conductivity [fm^-1]
+        double cosh_spectator_rap = cosh(spectator_rap);
+        double sinh_spectator_rap = sinh(spectator_rap);
 
-    double participant_coeff_a = 0.5;
-    double participant_rapidity_envelop_coeff =
+        double participant_coeff_a = 0.5;
+        double participant_rapidity_envelop_coeff =
             participant_coeff_a/(2.*sinh(participant_coeff_a*spectator_rap));
-    double participant_rapidity_integral_ny = 30;
-    double participant_rapidity_integral_dy =
+        double participant_rapidity_integral_ny = 30;
+        double participant_rapidity_integral_dy =
                     2.*spectator_rap/(participant_rapidity_integral_ny - 1);
 
-    double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
-    for (int i_array = 0; i_array < EM_fields_array_length; i_array++) {
+        double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
+
         double field_x = cell_list[i_array].x;
         double field_y = cell_list[i_array].y;
         double field_tau = cell_list[i_array].tau;
@@ -720,6 +728,8 @@ void EM_fields::calculate_EM_fields() {
                      << "\% done." << endl;
             }
         }
+    }
+    #pragma omp barrier
     }
     return;
 }

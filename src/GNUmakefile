@@ -10,8 +10,8 @@
 ##			distclean	remove all objectsfiles and binaries
 ##  
 
-CC := g++
-CFLAGS= -O3 -Wall
+CC := g++-mp-5
+CFLAGS= -O3 -Wall -fopenmp
 
 RM		=	rm -f
 O               =       .o

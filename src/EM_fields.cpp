@@ -642,10 +642,12 @@ void EM_fields::calculate_EM_fields() {
                     double Delta_2 = sqrt(r_perp_local_sq
                                           + z_local_participant_2_sq);
                     double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
-                    double A_1 = (sigma/2.*(z_local_participant_1 - Delta_1)
-                                            *sinh_participant_rap);
-                    double A_2 = (sigma/2.*(z_local_participant_2 + Delta_2)
-                                            *(-sinh_participant_rap));
+                    double A_1 = (
+                        sigma/2.*(z_local_participant_1*sinh_participant_rap
+                                  - fabs(sinh_participant_rap)*Delta_1));
+                    double A_2 = (
+                        sigma/2.*(z_local_participant_2*sinh_participant_rap
+                                  - fabs(sinh_participant_rap)*Delta_2));
                     double exp_A_1 = exp(A_1);
                     double exp_A_2 = exp(A_2);
                     double common_integrand_E = (

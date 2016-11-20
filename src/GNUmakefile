@@ -25,10 +25,10 @@ MAIN		=	EM_fields.e
 endif
 
 SRC		=	main.cpp ParameterReader.cpp \
-			EM_fields.cpp
+			EM_fields.cpp gauss_quadrature.cpp
 
 INC		= 	EM_fields.h Stopwatch.h ParameterReader.h \
-                  parameter.h
+            parameter.h gauss_quadrature.h
 
 # -------------------------------------------------
 

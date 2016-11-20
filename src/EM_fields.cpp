@@ -11,6 +11,7 @@
 
 #include "./parameter.h"
 #include "./EM_fields.h"
+#include "./gauss_quadrature.h"
 
 using namespace std;
 
@@ -523,13 +524,15 @@ void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
 
 void EM_fields::calculate_EM_fields() {
     int i_array;
-    #pragma omp parallel private(i_array)
+    int count = 0;
+    #pragma omp parallel private(i_array, count)
     {
+    if (omp_get_thread_num() == 0) {
+        cout << "computing EM fields with " << omp_get_num_threads()
+             << " cpu cores..." << endl;
+    }
     #pragma omp for
     for (i_array = 0; i_array < EM_fields_array_length; i_array++) {
-        // cout << "Thread " << omp_get_thread_num()
-        //      << "executes loop iteraction ieta = " << i_array << endl;
-        // this function calculates E and B fields
         double sigma = 0.023;       // electric conductivity [fm^-1]
         double cosh_spectator_rap = cosh(spectator_rap);
         double sinh_spectator_rap = sinh(spectator_rap);
@@ -537,9 +540,15 @@ void EM_fields::calculate_EM_fields() {
         double participant_coeff_a = 0.5;
         double participant_rapidity_envelop_coeff =
             participant_coeff_a/(2.*sinh(participant_coeff_a*spectator_rap));
-        double participant_rapidity_integral_ny = 30;
-        double participant_rapidity_integral_dy =
-                    2.*spectator_rap/(participant_rapidity_integral_ny - 1);
+        int participant_rapidity_integral_ny = 50;
+        double *participant_rap_inte_y_array =
+                                new double[participant_rapidity_integral_ny];
+        double *participant_rap_inte_weight_array =
+                                new double[participant_rapidity_integral_ny];
+        gauss_quadrature(participant_rapidity_integral_ny, 1, 0.0, 0.0,
+                         -spectator_rap, spectator_rap,
+                         participant_rap_inte_y_array,
+                         participant_rap_inte_weight_array);
 
         double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
 
@@ -613,8 +622,7 @@ void EM_fields::calculate_EM_fields() {
         double temp_sum_By_participant = 0.0e0;
         
         for (int k = 0; k < participant_rapidity_integral_ny; k++) {
-            double rap_local = (
-                        -spectator_rap + k*participant_rapidity_integral_dy);
+            double rap_local = participant_rap_inte_y_array[k];
             double sinh_participant_rap = sinh(rap_local);
             double cosh_participant_rap = cosh(rap_local);
 
@@ -629,6 +637,10 @@ void EM_fields::calculate_EM_fields() {
             double z_local_participant_2_sq = (z_local_participant_2
                                                *z_local_participant_2);
 
+            double Ex_integrand = 0.0;
+            double Ey_integrand = 0.0;
+            double Bx_integrand = 0.0;
+            double By_integrand = 0.0;
             for (int i = 0; i < nucleon_density_grid_size; i++) {
                 double grid_x = nucleon_density_grid_x_array[i];
                 for (int j = 0; j < nucleon_density_grid_size; j++) {
@@ -665,53 +677,43 @@ void EM_fields::calculate_EM_fields() {
                          *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)*exp_A_2)
                         *exp_participant_rap_2);
 
-                    double Ex_integrand = x_local*common_integrand_E;
-                    double Ey_integrand = y_local*common_integrand_E;
-                    double Bx_integrand = -y_local*common_integrand_B;
-                    double By_integrand = x_local*common_integrand_B;
+                    Ex_integrand += x_local*common_integrand_E;
+                    Ey_integrand += y_local*common_integrand_E;
+                    Bx_integrand += -y_local*common_integrand_B;
+                    By_integrand += x_local*common_integrand_B;
                 
-                    temp_sum_Ex_participant +=
-                                        Ex_integrand*cosh_participant_rap;
-                    temp_sum_Ey_participant +=
-                                        Ey_integrand*cosh_participant_rap;
-                    temp_sum_Bx_participant +=
-                                        Bx_integrand*sinh_participant_rap;
-                    temp_sum_By_participant +=
-                                        By_integrand*sinh_participant_rap;
                 }
             }
+            temp_sum_Ex_participant += (Ex_integrand*cosh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+            temp_sum_Ey_participant += (Ey_integrand*cosh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+            temp_sum_Bx_participant += (Bx_integrand*sinh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+            temp_sum_By_participant += (By_integrand*sinh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
         }
 
-        cell_list[i_array].E_lab.x = (
-            charge_fraction*alpha_EM
+        cell_list[i_array].E_lab.x = (charge_fraction*alpha_EM
             *(temp_sum_Ex_spectator*cosh_spectator_rap
               + temp_sum_Ex_participant*participant_rapidity_envelop_coeff
-                *participant_rapidity_integral_dy)*dx_sq
-        );
-        cell_list[i_array].E_lab.y = (
-            charge_fraction*alpha_EM
+             )*dx_sq);
+        cell_list[i_array].E_lab.y = (charge_fraction*alpha_EM
             *(temp_sum_Ey_spectator*cosh_spectator_rap
               + temp_sum_Ey_participant*participant_rapidity_envelop_coeff
-                *participant_rapidity_integral_dy)*dx_sq
-        );
-        cell_list[i_array].E_lab.z = (
-            charge_fraction*alpha_EM
+             )*dx_sq);
+        cell_list[i_array].E_lab.z = (charge_fraction*alpha_EM
             *(temp_sum_Ez_spectator
               + temp_sum_Ez_participant*participant_rapidity_envelop_coeff
-                *participant_rapidity_integral_dy)*dx_sq
-        );
-        cell_list[i_array].B_lab.x = (
-            charge_fraction*alpha_EM
+             )*dx_sq);
+        cell_list[i_array].B_lab.x = (charge_fraction*alpha_EM
             *(temp_sum_Bx_spectator*sinh_spectator_rap
               + temp_sum_Bx_participant*participant_rapidity_envelop_coeff
-                *participant_rapidity_integral_dy)*dx_sq
-        );
-        cell_list[i_array].B_lab.y = (
-            charge_fraction*alpha_EM
+             )*dx_sq);
+        cell_list[i_array].B_lab.y = (charge_fraction*alpha_EM
             *(temp_sum_By_spectator*sinh_spectator_rap
               + temp_sum_By_participant*participant_rapidity_envelop_coeff
-                *participant_rapidity_integral_dy)*dx_sq
-        );
+             )*dx_sq);
         cell_list[i_array].B_lab.z = 0.0;
 
         // convert units to [GeV^2]
@@ -723,13 +725,21 @@ void EM_fields::calculate_EM_fields() {
         cell_list[i_array].B_lab.z *= hbarCsq;
 
         if (verbose_level > 3) {
-            if (i_array % static_cast<int>(EM_fields_array_length/10) == 0) {
-                cout << "computing EM fields: " << setprecision(3)
-                     << (static_cast<double>(i_array)
-                         /static_cast<double>(EM_fields_array_length)*100)
-                     << "\% done." << endl;
+            if (omp_get_thread_num() == 0) {
+                count++;
+                int total_num_cells = static_cast<int>(EM_fields_array_length
+                                                       /omp_get_num_threads());
+                if (count % static_cast<int>(total_num_cells/10) == 0) {
+                    cout << "computing EM fields: " << setprecision(3)
+                         << (static_cast<double>(count)
+                             /static_cast<double>(total_num_cells)*100)
+                         << "\% done." << endl;
+                }
             }
         }
+        // clean up
+        delete[] participant_rap_inte_y_array;
+        delete[] participant_rap_inte_weight_array;
     }
     #pragma omp barrier
     }

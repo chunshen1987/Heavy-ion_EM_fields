@@ -646,8 +646,8 @@ void EM_fields::calculate_EM_fields() {
                         sigma/2.*(z_local_participant_1*sinh_participant_rap
                                   - fabs(sinh_participant_rap)*Delta_1));
                     double A_2 = (
-                        sigma/2.*(z_local_participant_2*sinh_participant_rap
-                                  - fabs(sinh_participant_rap)*Delta_2));
+                        sigma/2.*(z_local_participant_2*(-sinh_participant_rap)
+                                  - fabs(-sinh_participant_rap)*Delta_2));
                     double exp_A_1 = exp(A_1);
                     double exp_A_2 = exp(A_2);
                     double common_integrand_E = (
@@ -670,16 +670,16 @@ void EM_fields::calculate_EM_fields() {
                     double Bx_integrand = -y_local*common_integrand_B;
                     double By_integrand = x_local*common_integrand_B;
                 
-                    temp_sum_Ex_participant += Ex_integrand;
-                    temp_sum_Ey_participant += Ey_integrand;
-                    temp_sum_Bx_participant += Bx_integrand;
-                    temp_sum_By_participant += By_integrand;
+                    temp_sum_Ex_participant +=
+                                        Ex_integrand*cosh_participant_rap;
+                    temp_sum_Ey_participant +=
+                                        Ey_integrand*cosh_participant_rap;
+                    temp_sum_Bx_participant +=
+                                        Bx_integrand*sinh_participant_rap;
+                    temp_sum_By_participant +=
+                                        By_integrand*sinh_participant_rap;
                 }
             }
-            temp_sum_Ex_participant *= cosh_participant_rap;
-            temp_sum_Ey_participant *= cosh_participant_rap;
-            temp_sum_Bx_participant *= sinh_participant_rap;
-            temp_sum_By_participant *= sinh_participant_rap;
         }
 
         cell_list[i_array].E_lab.x = (

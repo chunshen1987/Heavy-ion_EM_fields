@@ -59,7 +59,7 @@ class EM_fields {
     explicit EM_fields(ParameterReader* paraRdr_in);
     ~EM_fields();
 
-    void set_transverse_grid_points(double tau_local, double eta_local);
+    void set_4d_grid_points();
     void set_tau_grid_points(double x_local, double y_local, double eta_local);
     void read_in_densities(string path);
     void read_in_spectators_density(string filename_1, string filename_2);

@@ -85,7 +85,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     read_in_densities("./results");
 
     if (mode == 0) {
-        set_transverse_grid_points(0.2, 0.0);
+        set_4d_grid_points();
     } else if (mode == 1) {
         read_in_freezeout_surface_points_VISH2p1("./results/surface.dat",
                                                  "./results/decdat2.dat");
@@ -246,22 +246,38 @@ void EM_fields::set_tau_grid_points(double x_local, double y_local,
     }
 }
 
-void EM_fields::set_transverse_grid_points(double tau_local, double eta_local) {
+void EM_fields::set_4d_grid_points() {
+    cell_list.clear();
     double EM_fields_grid_size = 20.0;
-    double EM_fields_grid_dx = 0.1;
-
+    double EM_fields_grid_dx = 0.5;
+    double EM_fields_grid_neta = 41;
+    double EM_fields_grid_ntau = 11;
+    double EM_fields_grid_tau_max = 5.0;
     int number_of_points =
                 static_cast<int>(EM_fields_grid_size/EM_fields_grid_dx) + 1;
-    for (int i = 0; i < number_of_points; i++) {
-        double x_local = - EM_fields_grid_size/2. + i*EM_fields_grid_dx;
-        for (int j = 0; j < number_of_points; j++) {
-            double y_local = - EM_fields_grid_size/2. + j*EM_fields_grid_dx;
-            fluidCell cell_local;
-            cell_local.tau = tau_local;
-            cell_local.x = x_local;
-            cell_local.y = y_local;
-            cell_local.eta = eta_local;
-            cell_list.push_back(cell_local);
+    double EM_fields_grid_deta = 2.*spectator_rap/(EM_fields_grid_neta - 1);
+    double EM_fields_grid_dtau =
+                EM_fields_grid_tau_max/(EM_fields_grid_ntau - 1);
+    for (int l = 0; l < EM_fields_grid_ntau; l++) {
+        double tau_local = 0.0 + l*EM_fields_grid_dtau;
+        for (int k = 0; k < EM_fields_grid_neta; k++) {
+            double eta_local = -spectator_rap + k*EM_fields_grid_deta;
+            for (int i = 0; i < number_of_points; i++) {
+                double x_local = - EM_fields_grid_size/2. + i*EM_fields_grid_dx;
+                for (int j = 0; j < number_of_points; j++) {
+                    double y_local = - EM_fields_grid_size/2. + j*EM_fields_grid_dx;
+                    fluidCell cell_local;
+                    cell_local.tau = tau_local;
+                    cell_local.x = x_local;
+                    cell_local.y = y_local;
+                    cell_local.eta = eta_local;
+                    cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*0.2*0.2;  // GeV^2
+                    cell_local.beta.x = 0.0;
+                    cell_local.beta.y = 0.0;
+                    cell_local.beta.z = tanh(eta_local);
+                    cell_list.push_back(cell_local);
+                }
+            }
         }
     }
     EM_fields_array_length = cell_list.size();
@@ -627,7 +643,7 @@ void EM_fields::calculate_EM_fields() {
             double cosh_participant_rap = cosh(rap_local);
 
             double exp_participant_rap_1 = exp(participant_coeff_a*rap_local);
-            double exp_participant_rap_2 = 1./exp_participant_rap_1;
+            double exp_participant_rap_2 = exp_participant_rap_1;
             double z_local_participant_1 =
                                 field_tau*sinh(rap_local - field_eta);
             double z_local_participant_2 = (
@@ -664,18 +680,18 @@ void EM_fields::calculate_EM_fields() {
                     double exp_A_2 = exp(A_2);
                     double common_integrand_E = (
                         (participant_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)*exp_A_1)
-                        *exp_participant_rap_1
+                         *(sigma/2.*fabs(sinh_participant_rap)*Delta_1 + 1.)
+                         *exp_A_1)*exp_participant_rap_1
                       + (participant_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)*exp_A_2)
-                        *exp_participant_rap_2);
+                         *(sigma/2.*fabs(sinh_participant_rap)*Delta_2 + 1.)
+                         *exp_A_2)*exp_participant_rap_2);
                     double common_integrand_B = (
                         (participant_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)*exp_A_1)
-                        *exp_participant_rap_1
+                         *(sigma/2.*fabs(sinh_participant_rap)*Delta_1 + 1.)
+                         *exp_A_1)*exp_participant_rap_1
                       - (participant_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)*exp_A_2)
-                        *exp_participant_rap_2);
+                         *(sigma/2.*fabs(sinh_participant_rap)*Delta_2 + 1.)
+                         *exp_A_2)*exp_participant_rap_2);
 
                     Ex_integrand += x_local*common_integrand_E;
                     Ey_integrand += y_local*common_integrand_E;
@@ -880,7 +896,31 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
     // this function outputs hypersurface file with drifting velocity
     // the format of the hypersurface file is compatible with MUSIC
     ofstream output_file(filename.c_str());
-    if (mode == 1) {    // read in mode is from VISH2+1
+    if (mode == 0) {
+        for (int i = 0; i < EM_fields_array_length; i++) {
+            output_file << scientific << setprecision(8) << setw(15)
+                        << cell_list[i].tau << "  "
+                        << cell_list[i].x << "  "
+                        << cell_list[i].y << "  "
+                        << cell_list[i].eta << "  "
+                        << cell_list[i].drift_u_plus.tau << "  "
+                        << cell_list[i].drift_u_plus.x << "  "
+                        << cell_list[i].drift_u_plus.y << "  "
+                        << cell_list[i].drift_u_plus.eta << "  "
+                        << cell_list[i].drift_u_minus.tau << "  "
+                        << cell_list[i].drift_u_minus.x << "  "
+                        << cell_list[i].drift_u_minus.y << "  "
+                        << cell_list[i].drift_u_minus.eta << "  "
+                        << cell_list[i].drift_u_plus_2.tau << "  "
+                        << cell_list[i].drift_u_plus_2.x << "  "
+                        << cell_list[i].drift_u_plus_2.y << "  "
+                        << cell_list[i].drift_u_plus_2.eta << "  "
+                        << cell_list[i].drift_u_minus_2.tau << "  "
+                        << cell_list[i].drift_u_minus_2.x << "  "
+                        << cell_list[i].drift_u_minus_2.y << "  "
+                        << cell_list[i].drift_u_minus_2.eta << endl;
+        }
+    } else if (mode == 1) {    // read in mode is from VISH2+1
         ifstream decdat("./results/decdat2.dat");
         string input;
         double dummy;
@@ -1170,19 +1210,19 @@ void EM_fields::calculate_charge_drifting_velocity() {
                               - qEy);
             double check_z = (-qBy*delta_v_x + qBx*delta_v_y + mu_m*delta_v_z
                               - qEz);
-            if (fabs(check_x) > 1e-15) {
+            if (fabs(check_x) > 1e-10) {
                 cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
                      << " drifting velocity is not correct!"
                      << "check_x = " << check_x << endl;
                 exit(1);
             }
-            if (fabs(check_y) > 1e-15) {
+            if (fabs(check_y) > 1e-10) {
                 cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
                      << " drifting velocity is not correct!"
                      << "check_y = " << check_y << endl;
                 exit(1);
             }
-            if (fabs(check_z) > 1e-15) {
+            if (fabs(check_z) > 1e-10) {
                 cout << "Error:EM_fields::calculate_charge_drifting_velocity:"
                      << " drifting velocity is not correct!"
                      << "check_z = " << check_z << endl;

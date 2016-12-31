@@ -11,6 +11,8 @@ mode = 1                  # 0: compute EM fields in the transverse plane
 debug_flag = 0            # switch to output information for debug
 turn_on_bulk = 0          # whether the hypersurface file from hydro
                           # includes bulk pressure
+include_participant_contributions = 1  # flag to include contributions from
+                                       # participant nucleons
 
 atomic_number = 208       # the atomic number of the collding nucleus
 number_of_proton = 82     # number of protons inside the nucleus

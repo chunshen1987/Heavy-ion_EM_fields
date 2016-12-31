@@ -23,6 +23,8 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     mode = paraRdr->getVal("mode");
     verbose_level = paraRdr->getVal("verbose_level");
     turn_on_bulk = paraRdr->getVal("turn_on_bulk");
+    include_participant_contributions =
+                        paraRdr->getVal("include_participant_contributions");
     int atomic_number = paraRdr->getVal("atomic_number");
     int number_of_proton = paraRdr->getVal("number_of_proton");
     charge_fraction = (static_cast<double>(number_of_proton)
@@ -621,77 +623,84 @@ void EM_fields::calculate_EM_fields() {
         double temp_sum_Bx_participant = 0.0e0;
         double temp_sum_By_participant = 0.0e0;
         
-        for (int k = 0; k < participant_rapidity_integral_ny; k++) {
-            double rap_local = participant_rap_inte_y_array[k];
-            double sinh_participant_rap = sinh(rap_local);
-            double cosh_participant_rap = cosh(rap_local);
+        if (include_participant_contributions == 1) {
+            for (int k = 0; k < participant_rapidity_integral_ny; k++) {
+                double rap_local = participant_rap_inte_y_array[k];
+                double sinh_participant_rap = sinh(rap_local);
+                double cosh_participant_rap = cosh(rap_local);
 
-            double exp_participant_rap_1 = exp(participant_coeff_a*rap_local);
-            double exp_participant_rap_2 = 1./exp_participant_rap_1;
-            double z_local_participant_1 =
-                                field_tau*sinh(rap_local - field_eta);
-            double z_local_participant_2 = (
-                                field_tau*sinh(-rap_local - field_eta));
-            double z_local_participant_1_sq = (z_local_participant_1
-                                               *z_local_participant_1);
-            double z_local_participant_2_sq = (z_local_participant_2
-                                               *z_local_participant_2);
+                double exp_participant_rap_1 =
+                                        exp(participant_coeff_a*rap_local);
+                double exp_participant_rap_2 = 1./exp_participant_rap_1;
+                double z_local_participant_1 =
+                                    field_tau*sinh(rap_local - field_eta);
+                double z_local_participant_2 = (
+                                    field_tau*sinh(-rap_local - field_eta));
+                double z_local_participant_1_sq = (z_local_participant_1
+                                                   *z_local_participant_1);
+                double z_local_participant_2_sq = (z_local_participant_2
+                                                   *z_local_participant_2);
 
-            double Ex_integrand = 0.0;
-            double Ey_integrand = 0.0;
-            double Bx_integrand = 0.0;
-            double By_integrand = 0.0;
-            for (int i = 0; i < nucleon_density_grid_size; i++) {
-                double grid_x = nucleon_density_grid_x_array[i];
-                for (int j = 0; j < nucleon_density_grid_size; j++) {
-                    double grid_y = nucleon_density_grid_y_array[j];
-                    double x_local = field_x - grid_x;
-                    double y_local = field_y - grid_y;
-                    double r_perp_local_sq = x_local*x_local + y_local*y_local;
-                    double Delta_1 = sqrt(r_perp_local_sq
-                                          + z_local_participant_1_sq);
-                    double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
-                    double Delta_2 = sqrt(r_perp_local_sq
-                                          + z_local_participant_2_sq);
-                    double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
-                    double A_1 = (
-                        sigma/2.*(z_local_participant_1*sinh_participant_rap
+                double Ex_integrand = 0.0;
+                double Ey_integrand = 0.0;
+                double Bx_integrand = 0.0;
+                double By_integrand = 0.0;
+                for (int i = 0; i < nucleon_density_grid_size; i++) {
+                    double grid_x = nucleon_density_grid_x_array[i];
+                    for (int j = 0; j < nucleon_density_grid_size; j++) {
+                        double grid_y = nucleon_density_grid_y_array[j];
+                        double x_local = field_x - grid_x;
+                        double y_local = field_y - grid_y;
+                        double r_perp_local_sq = (
+                                        x_local*x_local + y_local*y_local);
+                        double Delta_1 = sqrt(r_perp_local_sq
+                                              + z_local_participant_1_sq);
+                        double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
+                        double Delta_2 = sqrt(r_perp_local_sq
+                                              + z_local_participant_2_sq);
+                        double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
+                        double A_1 = (sigma/2.
+                                *(z_local_participant_1*sinh_participant_rap
                                   - fabs(sinh_participant_rap)*Delta_1));
-                    double A_2 = (
-                        sigma/2.*(z_local_participant_2*(-sinh_participant_rap)
+                        double A_2 = (sigma/2.
+                                *(z_local_participant_2*(-sinh_participant_rap)
                                   - fabs(-sinh_participant_rap)*Delta_2));
-                    double exp_A_1 = exp(A_1);
-                    double exp_A_2 = exp(A_2);
-                    double common_integrand_E = (
-                        (participant_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)*exp_A_1)
-                        *exp_participant_rap_1
-                      + (participant_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)*exp_A_2)
-                        *exp_participant_rap_2);
-                    double common_integrand_B = (
-                        (participant_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)*exp_A_1)
-                        *exp_participant_rap_1
-                      - (participant_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                         *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)*exp_A_2)
-                        *exp_participant_rap_2);
+                        double exp_A_1 = exp(A_1);
+                        double exp_A_2 = exp(A_2);
+                        double common_integrand_E = (
+                            (participant_density_1[i][j]
+                             /(Delta_1_cubic + 1e-15)
+                             *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)
+                             *exp_A_1)*exp_participant_rap_1
+                          + (participant_density_2[i][j]
+                             /(Delta_2_cubic + 1e-15)
+                             *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)
+                             *exp_A_2)*exp_participant_rap_2);
+                        double common_integrand_B = (
+                            (participant_density_1[i][j]
+                             /(Delta_1_cubic + 1e-15)
+                             *(sigma/2.*sinh_participant_rap*Delta_1 + 1.)
+                             *exp_A_1)*exp_participant_rap_1
+                          - (participant_density_2[i][j]
+                             /(Delta_2_cubic + 1e-15)
+                             *(sigma/2.*sinh_participant_rap*Delta_2 + 1.)
+                             *exp_A_2)*exp_participant_rap_2);
 
-                    Ex_integrand += x_local*common_integrand_E;
-                    Ey_integrand += y_local*common_integrand_E;
-                    Bx_integrand += -y_local*common_integrand_B;
-                    By_integrand += x_local*common_integrand_B;
-                
+                        Ex_integrand += x_local*common_integrand_E;
+                        Ey_integrand += y_local*common_integrand_E;
+                        Bx_integrand += -y_local*common_integrand_B;
+                        By_integrand += x_local*common_integrand_B;
+                    }
                 }
+                temp_sum_Ex_participant += (Ex_integrand*cosh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+                temp_sum_Ey_participant += (Ey_integrand*cosh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+                temp_sum_Bx_participant += (Bx_integrand*sinh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
+                temp_sum_By_participant += (By_integrand*sinh_participant_rap
+                                        *participant_rap_inte_weight_array[k]);
             }
-            temp_sum_Ex_participant += (Ex_integrand*cosh_participant_rap
-                                        *participant_rap_inte_weight_array[k]);
-            temp_sum_Ey_participant += (Ey_integrand*cosh_participant_rap
-                                        *participant_rap_inte_weight_array[k]);
-            temp_sum_Bx_participant += (Bx_integrand*sinh_participant_rap
-                                        *participant_rap_inte_weight_array[k]);
-            temp_sum_By_participant += (By_integrand*sinh_participant_rap
-                                        *participant_rap_inte_weight_array[k]);
         }
 
         cell_list[i_array].E_lab.x = (charge_fraction*alpha_EM

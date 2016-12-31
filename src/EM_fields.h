@@ -35,6 +35,7 @@ class EM_fields {
     int verbose_level;
     int turn_on_bulk;
     int initialization_status;
+    int include_participant_contributions;
     ParameterReader *paraRdr;
 
     int nucleon_density_grid_size;

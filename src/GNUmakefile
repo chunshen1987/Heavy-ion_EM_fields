@@ -10,7 +10,7 @@
 ##			distclean	remove all objectsfiles and binaries
 ##  
 
-CC := icpc
+CC := g++-mp-6
 CFLAGS= -O3 -Wall -fopenmp
 
 RM		=	rm -f

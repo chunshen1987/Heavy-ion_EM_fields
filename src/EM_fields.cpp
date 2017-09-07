@@ -69,19 +69,21 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     }
 
     n_eta = paraRdr->getVal("n_eta");
-    if (n_eta < 2) {
-        cout << "EM_field: Error: n_eta needs to be at least 2" << endl;
-        cout << "current n_eta = " << n_eta << endl;
-        exit(1);
-    }
     eta_grid = new double[n_eta];
     sinh_eta_array = new double[n_eta];
     cosh_eta_array = new double[n_eta];
-    double deta = 2.*beam_rapidity*0.99/(n_eta - 1.);
-    for (int i = 0; i < n_eta; i++) {
-        eta_grid[i] = - beam_rapidity*0.99 + i*deta;
-        sinh_eta_array[i] = sinh(eta_grid[i]);
-        cosh_eta_array[i] = cosh(eta_grid[i]);
+    double deta = 1.0;
+    if (n_eta > 1) {
+        deta = 2.*beam_rapidity*0.99/(n_eta - 1.);
+        for (int i = 0; i < n_eta; i++) {
+            eta_grid[i] = - beam_rapidity*0.99 + i*deta;
+            sinh_eta_array[i] = sinh(eta_grid[i]);
+            cosh_eta_array[i] = cosh(eta_grid[i]);
+        }
+    } else {
+        eta_grid[0] = 0.0;
+        sinh_eta_array[0] = sinh(eta_grid[0]);
+        cosh_eta_array[0] = cosh(eta_grid[0]);
     }
 
     read_in_densities("./results");
@@ -151,14 +153,16 @@ void EM_fields::read_in_densities(string path) {
     read_in_spectators_density(spectator_1_filename.str(),
                                spectator_2_filename.str());
     // participants
-    ostringstream participant_1_filename;
-    participant_1_filename << path 
-                           << "/nuclear_thickness_TA_fromSd_order_2.dat";
-    ostringstream participant_2_filename;
-    participant_2_filename << path 
-                           << "/nuclear_thickness_TB_fromSd_order_2.dat";
-    read_in_participant_density(participant_1_filename.str(), 
-                                participant_2_filename.str());
+    if (include_participant_contributions == 1) {
+        ostringstream participant_1_filename;
+        participant_1_filename << path 
+                               << "/nuclear_thickness_TA_fromSd_order_2.dat";
+        ostringstream participant_2_filename;
+        participant_2_filename << path 
+                               << "/nuclear_thickness_TB_fromSd_order_2.dat";
+        read_in_participant_density(participant_1_filename.str(), 
+                                    participant_2_filename.str());
+    }
 }
 
 void EM_fields::read_in_spectators_density(string filename_1,

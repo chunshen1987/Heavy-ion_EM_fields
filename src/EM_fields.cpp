@@ -20,7 +20,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     paraRdr = paraRdr_in;
 
     debug_flag = paraRdr->getVal("debug_flag");
-    mode = paraRdr->getVal("mode");
+    mode_ = paraRdr->getVal("mode");
     verbose_level = paraRdr->getVal("verbose_level");
     turn_on_bulk = paraRdr->getVal("turn_on_bulk");
     include_participant_contributions =
@@ -37,7 +37,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     spectator_rap = beam_rapidity;
     // cout << "spectator rapidity = " << spectator_rap << endl;
 
-    if (mode < 10) {
+    if (mode_ < 10) {
         nucleon_density_grid_size = (
                 paraRdr->getVal("nucleon_density_grid_size"));
         nucleon_density_grid_dx = paraRdr->getVal("nucleon_density_grid_dx");
@@ -100,23 +100,23 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
 
     read_in_densities("./results");
 
-    if (mode == 0) {
+    if (mode_ == 0) {
         set_4d_grid_points();
-    } else if (mode == 1) {
+    } else if (mode_ == 1) {
         read_in_freezeout_surface_points_VISH2p1("./results/surface.dat",
                                                  "./results/decdat2.dat");
-    } else if (mode == 2) {
+    } else if (mode_ == 2) {
         set_tau_grid_points(0.0, 0.0, 0.0);
-    } else if (mode == 3) {
+    } else if (mode_ == 3) {
         read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                     "./results/surface.dat");
-    } else if (mode == 4) {
+    } else if (mode_ == 4) {
         read_in_freezeout_surface_points_MUSIC("./results/surface.dat");
-    } else if (mode == -1) {
+    } else if (mode_ == -1) {
         read_in_freezeout_surface_points_Gubser("./results/surface.dat");
     } else {
         cout << "EM_fields:: Error: unrecognize mode! "
-             << "mode = " << mode << endl;
+             << "mode = " << mode_ << endl;
         exit(1);
     }
 
@@ -125,7 +125,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
 
 EM_fields::~EM_fields() {
     if (initialization_status == 1) {
-        if (mode < 10) {
+        if (mode_ < 10) {
             for (int i = 0; i < nucleon_density_grid_size; i++) {
                 delete[] spectator_density_1[i];
                 delete[] spectator_density_2[i];
@@ -147,7 +147,7 @@ void EM_fields::read_in_densities(string path) {
     // spectators
     ostringstream spectator_1_filename;
     ostringstream spectator_2_filename;
-    if (mode == -1) {
+    if (mode_ == -1) {
         spectator_1_filename << path
                              << "/spectator_density_A_disk.dat";
         spectator_2_filename << path
@@ -882,7 +882,7 @@ void EM_fields::output_EM_fields(string filename) {
     // this function outputs the computed E and B fields to a text file
     ofstream output_file(filename.c_str());
     // write a header first
-    if (mode == -1) {
+    if (mode_ == -1) {
         output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
                     << "E_x[1/fm^2]  E_y[1/fm^2]  E_z[1/fm^2]  "
                     << "B_x[1/fm^2]  B_y[1/fm^2]  B_z[1/fm^2]" << endl;
@@ -922,7 +922,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
     // this function outputs hypersurface file with drifting velocity
     // the format of the hypersurface file is compatible with MUSIC
     ofstream output_file(filename.c_str());
-    if (mode == 0) {
+    if (mode_ == 0) {
         for (int i = 0; i < EM_fields_array_length; i++) {
             output_file << scientific << setprecision(8) << setw(15)
                         << cell_list[i].tau << "  "
@@ -946,7 +946,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                         << cell_list[i].drift_u_minus_2.y << "  "
                         << cell_list[i].drift_u_minus_2.eta << endl;
         }
-    } else if (mode == 1) {    // read in mode is from VISH2+1
+    } else if (mode_ == 1) {    // read in mode is from VISH2+1
         ifstream decdat("./results/decdat2.dat");
         string input;
         double dummy;
@@ -1022,7 +1022,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             }
         }
         decdat.close();
-    } else if (mode == 3) {
+    } else if (mode_ == 3) {
         ifstream decdat("./results/surface.dat");
         string input;
         double dummy;
@@ -1086,7 +1086,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             }
         }
         decdat.close();
-    } else if (mode == 4) {
+    } else if (mode_ == 4) {
         ifstream decdat("./results/surface.dat");
         string input;
         for (int i = 0; i < EM_fields_array_length; i++) {
@@ -1111,7 +1111,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
                         << cell_list[i].drift_u_minus_2.eta << endl;
         }
         decdat.close();
-    } else if (mode == -1) {
+    } else if (mode_ == -1) {
         ifstream decdat("./results/surface.dat");
         string input;
         // print out the header

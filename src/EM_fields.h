@@ -36,7 +36,7 @@ struct chargeSource {
 class EM_fields {
  private:
     int debug_flag;
-    int mode;
+    int mode_;
     int verbose_level;
     int turn_on_bulk;
     int initialization_status;

@@ -28,6 +28,11 @@ struct fluidCell {
     vector4 drift_u_minus_2;
 };
 
+struct chargeSource {
+    double x, y;
+    double rapidity;
+};
+
 class EM_fields {
  private:
     int debug_flag;
@@ -42,16 +47,20 @@ class EM_fields {
     double nucleon_density_grid_dx;
     // matrices stored the charge density in the transverse plane from the
     // two colliding nuclei, spectators and participants
-    double *nucleon_density_grid_x_array, *nucleon_density_grid_y_array;
+    std::vector<double> nucleon_density_grid_x_array_;
+    std::vector<double> nucleon_density_grid_y_array_;
     int n_eta;
-    double* eta_grid;
-    double *sinh_eta_array, *cosh_eta_array;
+    std::vector<double> eta_grid_;
+    std::vector<double> sinh_eta_array_, cosh_eta_array_;
     double **spectator_density_1, **spectator_density_2;
     double **participant_density_1, **participant_density_2;
 
+    std::vector<chargeSource> spectators_1_, spectators_2_;
+    std::vector<chargeSource> participants_1_, participants_2;
+
     // arraies for the space-time points of the EM fields
     int EM_fields_array_length;
-    vector<fluidCell> cell_list;
+    std::vector<fluidCell> cell_list;
 
     double charge_fraction;
     double spectator_rap;

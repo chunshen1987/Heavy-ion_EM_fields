@@ -37,53 +37,65 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     spectator_rap = beam_rapidity;
     // cout << "spectator rapidity = " << spectator_rap << endl;
 
-    nucleon_density_grid_size = paraRdr->getVal("nucleon_density_grid_size");
-    nucleon_density_grid_dx = paraRdr->getVal("nucleon_density_grid_dx");
-    if (nucleon_density_grid_size <= 0) {
-        cout << "EM_fields:: Error: Grid size for nucleon density profiles "
-             << "needs to be larger than 0!" << endl;
-        cout << "Current grid_size = " << nucleon_density_grid_size << endl;
-        exit(1);
-    }
-    nucleon_density_grid_x_array = new double[nucleon_density_grid_size];
-    nucleon_density_grid_y_array = new double[nucleon_density_grid_size];
-    spectator_density_1 = new double* [nucleon_density_grid_size];
-    spectator_density_2 = new double* [nucleon_density_grid_size];
-    participant_density_1 = new double* [nucleon_density_grid_size];
-    participant_density_2 = new double* [nucleon_density_grid_size];
-    for (int i = 0; i < nucleon_density_grid_size; i++) {
-        nucleon_density_grid_x_array[i] = (
-            (-(nucleon_density_grid_size-1)/2. + i)*nucleon_density_grid_dx);
-        nucleon_density_grid_y_array[i] = (
-            (-(nucleon_density_grid_size-1)/2. + i)*nucleon_density_grid_dx);
-        spectator_density_1[i] = new double[nucleon_density_grid_size];
-        spectator_density_2[i] = new double[nucleon_density_grid_size];
-        participant_density_1[i] = new double[nucleon_density_grid_size];
-        participant_density_2[i] = new double[nucleon_density_grid_size];
-        for (int j = 0; j < nucleon_density_grid_size; j++) {
-            spectator_density_1[i][j] = 0.0;
-            spectator_density_2[i][j] = 0.0;
-            participant_density_1[i][j] = 0.0;
-            participant_density_2[i][j] = 0.0;
+    if (mode < 10) {
+        nucleon_density_grid_size = (
+                paraRdr->getVal("nucleon_density_grid_size"));
+        nucleon_density_grid_dx = paraRdr->getVal("nucleon_density_grid_dx");
+        if (nucleon_density_grid_size <= 0) {
+            cout << "EM_fields:: Error: Grid size for nucleon density profiles "
+                 << "needs to be larger than 0!" << endl;
+            cout << "Current grid_size = " << nucleon_density_grid_size
+                 << endl;
+            exit(1);
+        }
+        nucleon_density_grid_x_array_.resize(nucleon_density_grid_size, 0.);
+        nucleon_density_grid_y_array_.resize(nucleon_density_grid_size, 0.);
+        spectator_density_1 = new double* [nucleon_density_grid_size];
+        spectator_density_2 = new double* [nucleon_density_grid_size];
+        participant_density_1 = new double* [nucleon_density_grid_size];
+        participant_density_2 = new double* [nucleon_density_grid_size];
+        for (int i = 0; i < nucleon_density_grid_size; i++) {
+            nucleon_density_grid_x_array_[i] = (
+                                (-(nucleon_density_grid_size-1)/2. + i)
+                                *nucleon_density_grid_dx);
+            nucleon_density_grid_y_array_[i] = (
+                                (-(nucleon_density_grid_size-1)/2. + i)
+                                *nucleon_density_grid_dx);
+            spectator_density_1[i] = new double[nucleon_density_grid_size];
+            spectator_density_2[i] = new double[nucleon_density_grid_size];
+            participant_density_1[i] = new double[nucleon_density_grid_size];
+            participant_density_2[i] = new double[nucleon_density_grid_size];
+            for (int j = 0; j < nucleon_density_grid_size; j++) {
+                spectator_density_1[i][j] = 0.0;
+                spectator_density_2[i][j] = 0.0;
+                participant_density_1[i][j] = 0.0;
+                participant_density_2[i][j] = 0.0;
+            }
         }
     }
 
     n_eta = paraRdr->getVal("n_eta");
-    eta_grid = new double[n_eta];
-    sinh_eta_array = new double[n_eta];
-    cosh_eta_array = new double[n_eta];
-    double deta = 1.0;
-    if (n_eta > 1) {
-        deta = 2.*beam_rapidity*0.99/(n_eta - 1.);
-        for (int i = 0; i < n_eta; i++) {
-            eta_grid[i] = - beam_rapidity*0.99 + i*deta;
-            sinh_eta_array[i] = sinh(eta_grid[i]);
-            cosh_eta_array[i] = cosh(eta_grid[i]);
+    if (n_eta > 0) {
+        eta_grid_.resize(n_eta, 0);
+        sinh_eta_array_.resize(n_eta, 0);
+        cosh_eta_array_.resize(n_eta, 0);
+        double deta = 1.0;
+        if (n_eta > 1) {
+            deta = 2.*beam_rapidity*0.99/(n_eta - 1.);
+            for (int i = 0; i < n_eta; i++) {
+                eta_grid_[i] = - beam_rapidity*0.99 + i*deta;
+                sinh_eta_array_[i] = sinh(eta_grid_[i]);
+                cosh_eta_array_[i] = cosh(eta_grid_[i]);
+            }
+        } else {
+            // neta == 1
+            eta_grid_[0] = 0.0;
+            sinh_eta_array_[0] = sinh(eta_grid_[0]);
+            cosh_eta_array_[0] = cosh(eta_grid_[0]);
         }
     } else {
-        eta_grid[0] = 0.0;
-        sinh_eta_array[0] = sinh(eta_grid[0]);
-        cosh_eta_array[0] = cosh(eta_grid[0]);
+        cout << "neta needs to be > 0! neta = " << n_eta << endl;
+        exit(1);
     }
 
     read_in_densities("./results");
@@ -113,22 +125,18 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
 
 EM_fields::~EM_fields() {
     if (initialization_status == 1) {
-        for (int i = 0; i < nucleon_density_grid_size; i++) {
-            delete[] spectator_density_1[i];
-            delete[] spectator_density_2[i];
-            delete[] participant_density_1[i];
-            delete[] participant_density_2[i];
+        if (mode < 10) {
+            for (int i = 0; i < nucleon_density_grid_size; i++) {
+                delete[] spectator_density_1[i];
+                delete[] spectator_density_2[i];
+                delete[] participant_density_1[i];
+                delete[] participant_density_2[i];
+            }
+            delete[] spectator_density_1;
+            delete[] spectator_density_2;
+            delete[] participant_density_1;
+            delete[] participant_density_2;
         }
-        delete[] spectator_density_1;
-        delete[] spectator_density_2;
-        delete[] participant_density_1;
-        delete[] participant_density_2;
-        delete[] nucleon_density_grid_x_array;
-        delete[] nucleon_density_grid_y_array;
-
-        delete[] eta_grid;
-        delete[] sinh_eta_array;
-        delete[] cosh_eta_array;
 
         cell_list.clear();
     }
@@ -320,17 +328,17 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
                                      - vy_local*vy_local);
         double u_x_local = u_tau_local*vx_local;
         double u_y_local = u_tau_local*vy_local;
-        for (int i = 0; i < n_eta; i++) {
+        for (unsigned int i = 0; i < eta_grid_.size(); i++) {
             fluidCell cell_local;
             cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
-            cell_local.eta = eta_grid[i];
+            cell_local.eta = eta_grid_[i];
             cell_local.tau = tau_local;
             cell_local.x = x_local;
             cell_local.y = y_local;
 
             // compute fluid velocity in t-xyz coordinate
-            double u_t_local = u_tau_local*cosh_eta_array[i];
-            double u_z_local = u_tau_local*sinh_eta_array[i];
+            double u_t_local = u_tau_local*cosh_eta_array_[i];
+            double u_z_local = u_tau_local*sinh_eta_array_[i];
             cell_local.beta.x = u_x_local/u_t_local;
             cell_local.beta.y = u_y_local/u_t_local;
             cell_local.beta.z = u_z_local/u_t_local;
@@ -442,21 +450,21 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
         u_tau_local = sqrt(1. + u_x_local*u_x_local + u_y_local*u_y_local);
         ss >> dummy >> dummy >> T_local;
         // the rest information is discarded
-        for (int i = 0; i < n_eta; i++) {
+        for (unsigned int i = 0; i < eta_grid_.size(); i++) {
             fluidCell cell_local;
             cell_local.mu_m = M_PI/2.*sqrt(6*M_PI)*T_local*T_local;  // GeV^2
             if (cell_local.mu_m < 1e-5) {     // mu_m is too small
                 cout << cell_local.mu_m << "  " << T_local << endl;
                 exit(1);
             }
-            cell_local.eta = eta_grid[i];
+            cell_local.eta = eta_grid_[i];
             cell_local.tau = tau_local;
             cell_local.x = x_local;
             cell_local.y = y_local;
 
             // compute fluid velocity in t-xyz coordinate
-            double u_t_local = u_tau_local*cosh_eta_array[i];
-            double u_z_local = u_tau_local*sinh_eta_array[i];
+            double u_t_local = u_tau_local*cosh_eta_array_[i];
+            double u_z_local = u_tau_local*sinh_eta_array_[i];
             cell_local.beta.x = u_x_local/u_t_local;
             cell_local.beta.y = u_y_local/u_t_local;
             cell_local.beta.z = u_z_local/u_t_local;
@@ -545,16 +553,15 @@ void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
 }
 
 void EM_fields::calculate_EM_fields() {
-    int i_array;
-    int count = 0;
-    #pragma omp parallel private(i_array, count)
+    #pragma omp parallel
     {
     if (omp_get_thread_num() == 0) {
         cout << "computing EM fields with " << omp_get_num_threads()
              << " cpu cores..." << endl;
     }
+    int count = 0;
     #pragma omp for
-    for (i_array = 0; i_array < EM_fields_array_length; i_array++) {
+    for (int i_array = 0; i_array < EM_fields_array_length; i_array++) {
         double sigma = 0.023;       // electric conductivity [fm^-1]
         double cosh_spectator_rap = cosh(spectator_rap);
         double sinh_spectator_rap = sinh(spectator_rap);
@@ -592,10 +599,12 @@ void EM_fields::calculate_EM_fields() {
         double z_local_spectator_2_sq = (z_local_spectator_2
                                          *z_local_spectator_2);
 
-        for (int i = 0; i < nucleon_density_grid_size; i++) {
-            double grid_x = nucleon_density_grid_x_array[i];
-            for (int j = 0; j < nucleon_density_grid_size; j++) {
-                double grid_y = nucleon_density_grid_y_array[j];
+        for (unsigned int i = 0;
+                i < nucleon_density_grid_x_array_.size(); i++) {
+            double grid_x = nucleon_density_grid_x_array_[i];
+            for (unsigned int j = 0;
+                    j < nucleon_density_grid_y_array_.size(); j++) {
+                double grid_y = nucleon_density_grid_y_array_[j];
                 double x_local = field_x - grid_x;
                 double y_local = field_y - grid_y;
                 double r_perp_local_sq = x_local*x_local + y_local*y_local;
@@ -628,21 +637,21 @@ void EM_fields::calculate_EM_fields() {
                 double Ey_integrand = y_local*common_integrand_E;
                 double Bx_integrand = -y_local*common_integrand_B;
                 double By_integrand = x_local*common_integrand_B;
-                
+
                 temp_sum_Ex_spectator += Ex_integrand;
                 temp_sum_Ey_spectator += Ey_integrand;
                 temp_sum_Bx_spectator += Bx_integrand;
                 temp_sum_By_spectator += By_integrand;
             }
         }
-        
+
         // compute contribution from participants
         double temp_sum_Ex_participant = 0.0e0;
         double temp_sum_Ey_participant = 0.0e0;
         double temp_sum_Ez_participant = 0.0e0;
         double temp_sum_Bx_participant = 0.0e0;
         double temp_sum_By_participant = 0.0e0;
-        
+
         if (include_participant_contributions == 1) {
             for (int k = 0; k < participant_rapidity_integral_ny; k++) {
                 double rap_local = participant_rap_inte_y_array[k];
@@ -665,10 +674,12 @@ void EM_fields::calculate_EM_fields() {
                 double Ey_integrand = 0.0;
                 double Bx_integrand = 0.0;
                 double By_integrand = 0.0;
-                for (int i = 0; i < nucleon_density_grid_size; i++) {
-                    double grid_x = nucleon_density_grid_x_array[i];
-                    for (int j = 0; j < nucleon_density_grid_size; j++) {
-                        double grid_y = nucleon_density_grid_y_array[j];
+                for (unsigned int i = 0;
+                        i < nucleon_density_grid_x_array_.size(); i++) {
+                    double grid_x = nucleon_density_grid_x_array_[i];
+                    for (unsigned int j = 0;
+                            j < nucleon_density_grid_y_array_.size(); j++) {
+                        double grid_y = nucleon_density_grid_y_array_[j];
                         double x_local = field_x - grid_x;
                         double y_local = field_y - grid_y;
                         double r_perp_local_sq = (
@@ -799,10 +810,12 @@ void EM_fields::calculate_EM_fields_no_electric_conductivity() {
         double z_local_spectator_2_sq =
                                     z_local_spectator_2*z_local_spectator_2;
 
-        for (int i = 0; i < nucleon_density_grid_size; i++) {
-            double grid_x = nucleon_density_grid_x_array[i];
-            for (int j = 0; j < nucleon_density_grid_size; j++) {
-                double grid_y = nucleon_density_grid_y_array[j];
+        for (unsigned int i = 0;
+                i < nucleon_density_grid_x_array_.size(); i++) {
+            double grid_x = nucleon_density_grid_x_array_[i];
+            for (unsigned int j = 0;
+                    j < nucleon_density_grid_y_array_.size(); j++) {
+                double grid_y = nucleon_density_grid_y_array_[j];
                 double x_local = field_x - grid_x;
                 double y_local = field_y - grid_y;
                 double r_perp_local_sq = x_local*x_local + y_local*y_local;
@@ -957,7 +970,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             double pi13 = 0.0;
             double pi23 = 0.0;
             ss >> bulkPi;
-            for (int j = 0; j < n_eta; j++) {
+            for (unsigned int j = 0; j < eta_grid_.size(); j++) {
                 double u_t = (
                     1./sqrt(1. - cell_list[idx].beta.x*cell_list[idx].beta.x
                                - cell_list[idx].beta.y*cell_list[idx].beta.y
@@ -1032,7 +1045,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
             ss >> pi00 >> pi01 >> pi02 >> pi03 >> pi11 >> pi12 >> pi13
                >> pi22 >> pi23 >> pi33;
             ss >> bulkPi;
-            for (int j = 0; j < n_eta; j++) {
+            for (unsigned int j = 0; j < eta_grid_.size(); j++) {
                 output_file << scientific << setprecision(8) << setw(15)
                             << cell_list[idx].tau << "  "
                             << cell_list[idx].x << "  "

@@ -36,13 +36,16 @@ int main(int argc, char *argv[]) {
     paraRdr.readFromFile("parameters.dat");
     paraRdr.readFromArguments(argc, argv);
     paraRdr.echo();
+    int mode_ = paraRdr.getVal("mode");
 
     EM_fields testEM(&paraRdr);
     testEM.calculate_EM_fields();
     testEM.output_EM_fields("./results/EM_fields.dat");
-    testEM.calculate_charge_drifting_velocity();
-    testEM.output_surface_file_with_drifting_velocity(
+    if (mode_%10 != 0) {
+        testEM.calculate_charge_drifting_velocity();
+        testEM.output_surface_file_with_drifting_velocity(
                             "./results/surface_with_drifting_velocity.dat");
+    }
 
     sw.toc();
     cout << "Totally takes " << sw.takeTime() << " sec." << endl;

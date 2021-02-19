@@ -5,33 +5,10 @@
 #include <string>
 #include <vector>
 
-#include "./ParameterReader.h"
+#include "ParameterReader.h"
+#include "data_struct.h"
 
-using namespace std;
-
-struct vector3 {
-    double x, y, z;
-};
-
-struct vector4 {
-    double tau, x, y, eta;
-};
-
-struct fluidCell {
-    double mu_m;                // the effective mass of the cell [GeV^2]
-    double tau, x, y, eta;      // spatial poision of the fluid cell
-    vector3 beta;               // flow velocity of the fluid cell
-    vector3 E_lab, B_lab;       // E and B fields in the lab frame
-    vector4 drift_u_plus;       // drifting 4 velocity induced by EM fields
-    vector4 drift_u_minus;
-    vector4 drift_u_plus_2;     // drifting 4 velocity induced by EM fields
-    vector4 drift_u_minus_2;
-};
-
-struct chargeSource {
-    double x, y;
-    double rapidity;
-};
+using std::string;
 
 class EM_fields {
  private:
@@ -52,7 +29,6 @@ class EM_fields {
     int n_eta;
     std::vector<double> eta_grid_;
     std::vector<double> sinh_eta_array_, cosh_eta_array_;
-    double **spectator_density_1, **spectator_density_2;
     double **participant_density_1, **participant_density_2;
 
     int energy_density_grid_size_;
@@ -64,6 +40,9 @@ class EM_fields {
     // arraies for the space-time points of the EM fields
     int EM_fields_array_length;
     std::vector<fluidCell> cell_list;
+    std::vector<fluidCellSmall> cellListSmall_;
+
+    float hydroEvoHeader[16];
 
     double charge_fraction;
     double spectator_rap;
@@ -84,12 +63,14 @@ class EM_fields {
     void read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename);
     void read_in_freezeout_surface_points_MUSIC(string filename);
+    void read_in_hydro_fluid_cells_MUSIC(string filename);
     void calculate_EM_fields();
     void calculate_EM_fields_no_electric_conductivity();
     void calculate_charge_drifting_velocity();
     void compute_averaged_EM_fields(string filename);
     void output_EM_fields(string filename);
     void output_surface_file_with_drifting_velocity(string filename);
+    void output_EMfields_to_hydro_evo(string filename);
     void lorentz_transform_vector_in_place(double *u_mu, double *v);
     void lorentz_transform_vector_with_Lambda(double *u_mu, double *beta);
     void Lorentz_boost_EM_fields(double *E_lab, double *B_lab, double *beta,

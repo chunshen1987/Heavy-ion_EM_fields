@@ -42,10 +42,13 @@ int main(int argc, char *argv[]) {
     testEM.calculate_EM_fields();
     if (mode_ == 10) {
         testEM.compute_averaged_EM_fields("./results/EMavg.dat");
+    } else if (mode_ == 7) {
+        testEM.output_EMfields_to_hydro_evo(
+                "./results/evolution_all_xyeta_withEMfields.dat");
     } else {
         testEM.output_EM_fields("./results/EM_fields.dat");
     }
-    if (mode_ % 10 != 0) {
+    if (mode_ % 10 != 0 && mode_ != 7) {
         testEM.calculate_charge_drifting_velocity();
         testEM.output_surface_file_with_drifting_velocity(
                             "./results/surface_with_drifting_velocity.dat");

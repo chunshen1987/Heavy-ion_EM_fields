@@ -50,8 +50,6 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
         }
         nucleon_density_grid_x_array_.resize(nucleon_density_grid_size, 0.);
         nucleon_density_grid_y_array_.resize(nucleon_density_grid_size, 0.);
-        spectator_density_1 = new double* [nucleon_density_grid_size];
-        spectator_density_2 = new double* [nucleon_density_grid_size];
         participant_density_1 = new double* [nucleon_density_grid_size];
         participant_density_2 = new double* [nucleon_density_grid_size];
         for (int i = 0; i < nucleon_density_grid_size; i++) {
@@ -61,13 +59,9 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
             nucleon_density_grid_y_array_[i] = (
                                 (-(nucleon_density_grid_size-1)/2. + i)
                                 *nucleon_density_grid_dx);
-            spectator_density_1[i] = new double[nucleon_density_grid_size];
-            spectator_density_2[i] = new double[nucleon_density_grid_size];
             participant_density_1[i] = new double[nucleon_density_grid_size];
             participant_density_2[i] = new double[nucleon_density_grid_size];
             for (int j = 0; j < nucleon_density_grid_size; j++) {
-                spectator_density_1[i][j] = 0.0;
-                spectator_density_2[i][j] = 0.0;
                 participant_density_1[i][j] = 0.0;
                 participant_density_2[i][j] = 0.0;
             }
@@ -115,6 +109,8 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
                                                     "./results/surface.dat");
     } else if (mode_ == 4) {
         read_in_freezeout_surface_points_MUSIC("./results/surface.dat");
+    } else if (mode_ == 7) {
+        read_in_hydro_fluid_cells_MUSIC("./results/evolution_all_xyeta.dat");
     } else if (mode_ == -1) {
         read_in_freezeout_surface_points_Gubser("./results/surface.dat");
     } else {
@@ -126,24 +122,26 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
     initialization_status = 1;
 }
 
+
 EM_fields::~EM_fields() {
     if (initialization_status == 1) {
         if (mode_ < 10) {
             for (int i = 0; i < nucleon_density_grid_size; i++) {
-                delete[] spectator_density_1[i];
-                delete[] spectator_density_2[i];
                 delete[] participant_density_1[i];
                 delete[] participant_density_2[i];
             }
-            delete[] spectator_density_1;
-            delete[] spectator_density_2;
             delete[] participant_density_1;
             delete[] participant_density_2;
         }
-        cell_list.clear();
+        if (mode_ == 7) {
+            cellListSmall_.clear();
+        } else {
+            cell_list.clear();
+        }
     }
     return;
 }
+
 
 void EM_fields::read_in_densities(string path) {
     // spectators
@@ -185,6 +183,7 @@ void EM_fields::read_in_densities(string path) {
     }
 }
 
+
 void EM_fields::read_in_spectators_density(string filename_1,
                                            string filename_2) {
     if (verbose_level > 3) {
@@ -204,10 +203,28 @@ void EM_fields::read_in_spectators_density(string filename_1,
     }
 
     if (mode_ < 10) {
+        const double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
         for (int i = 0; i < nucleon_density_grid_size; i++) {
             for (int j = 0; j < nucleon_density_grid_size; j++) {
-                spec1 >> spectator_density_1[i][j];
-                spec2 >> spectator_density_2[i][j];
+                double local_spec_density;
+                spec1 >> local_spec_density;
+                if (local_spec_density > 1e-6) {
+                    chargeSource spec_tmp;
+                    spec_tmp.x = nucleon_density_grid_x_array_[i];
+                    spec_tmp.y = nucleon_density_grid_y_array_[j];
+                    spec_tmp.rapidity = spectator_rap;
+                    spec_tmp.weight = local_spec_density*dx_sq;
+                    spectators_1_.push_back(spec_tmp);
+                }
+                spec2 >> local_spec_density;
+                if (local_spec_density > 1e-6) {
+                    chargeSource spec_tmp;
+                    spec_tmp.x = nucleon_density_grid_x_array_[i];
+                    spec_tmp.y = nucleon_density_grid_y_array_[j];
+                    spec_tmp.rapidity = spectator_rap;
+                    spec_tmp.weight = local_spec_density*dx_sq;
+                    spectators_2_.push_back(spec_tmp);
+                }
             }
         }
     } else {
@@ -218,6 +235,7 @@ void EM_fields::read_in_spectators_density(string filename_1,
             spec_tmp.x = x;
             spec_tmp.y = y;
             spec_tmp.rapidity = spectator_rap;
+            spec_tmp.weight = 1.;
             spectators_1_.push_back(spec_tmp);
             spec1 >> x >> y;
         }
@@ -227,6 +245,7 @@ void EM_fields::read_in_spectators_density(string filename_1,
             spec_tmp.x = x;
             spec_tmp.y = y;
             spec_tmp.rapidity = -spectator_rap;
+            spec_tmp.weight = 1.;
             spectators_2_.push_back(spec_tmp);
             spec2 >> x >> y;
         }
@@ -301,6 +320,7 @@ void EM_fields::read_in_participant_density(string filename_1,
     }
 }
 
+
 void EM_fields::set_tau_grid_points(double x_local, double y_local,
                                     double eta_local) {
     double EM_fields_grid_size = 15.0;
@@ -323,6 +343,7 @@ void EM_fields::set_tau_grid_points(double x_local, double y_local,
              << EM_fields_array_length << endl;
     }
 }
+
 
 void EM_fields::set_4d_grid_points() {
     cell_list.clear();
@@ -371,6 +392,7 @@ void EM_fields::set_4d_grid_points() {
              << EM_fields_array_length << endl;
     }
 }
+
 
 void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
                                                          string filename2) {
@@ -431,6 +453,7 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1(string filename1,
     }
 }
 
+
 void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
     // this function reads in the freeze out surface points from a text file
     ifstream FOsurf(filename.c_str());
@@ -489,6 +512,7 @@ void EM_fields::read_in_freezeout_surface_points_Gubser(string filename) {
              << EM_fields_array_length << endl;
     }
 }
+
 
 void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
                                                             string filename) {
@@ -555,6 +579,7 @@ void EM_fields::read_in_freezeout_surface_points_VISH2p1_boost_invariant(
              << EM_fields_array_length << endl;
     }
 }
+
 
 void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
     // this function reads in the freeze out surface points from a text file
@@ -623,6 +648,86 @@ void EM_fields::read_in_freezeout_surface_points_MUSIC(string filename) {
     }
 }
 
+
+void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
+    // this function reads in the freeze out surface points from a text file
+    if (verbose_level > 1) {
+        cout << "read in hydro evolution fluid cells from MUSIC "
+             << "(3+1)-d outputs (no grid) ..." << endl;
+    }
+    std::FILE *fin;
+    fin = std::fopen(filename.c_str(), "rb");
+    if (fin == NULL) {
+        cerr << "[Hydroinfo_MUSIC::readHydroData]: ERROR: "
+             << "Unable to open file: " << filename << endl;
+        exit(1);
+    }
+
+    float header[16];
+    int status = std::fread(&header, sizeof(float), 16, fin);
+    if (status == 0) {
+        cerr << "[Hydroinfo_MUSIC::readHydroData]: ERROR: "
+             << "Can not read the evolution file header" << endl;
+        exit(1);
+    }
+    for (int i = 0; i < 16; i++) hydroEvoHeader[i] = header[i];
+
+    const float hydroTau0 = header[0];
+    const float hydroDtau = header[1];
+    const float hydroDx = header[3];
+    const float hydroXmax = std::abs(header[4]);
+    const float hydroDeta = header[9];
+    const float hydro_eta_max = std::abs(header[10]);
+    const int nVar_per_cell = static_cast<int>(header[15]);
+
+    // read in fluid cells positions and informations
+    float cell_info[nVar_per_cell];
+    int ik = 0;
+    while (true) {
+        status = 0;
+        status = std::fread(&cell_info, sizeof(float), nVar_per_cell, fin);
+        if (status == 0) break;
+        if (status != nVar_per_cell) {
+            cerr << "[readHydroData]: ERROR: "
+                 << "the evolution file format is not correct" << endl;
+            exit(1);
+        }
+
+        fluidCellSmall newCell;
+        newCell.itau = static_cast<int>(cell_info[0]);
+        newCell.ix   = static_cast<int>(cell_info[1]);
+        newCell.iy   = static_cast<int>(cell_info[2]);
+        newCell.ieta = static_cast<int>(cell_info[3]);
+        newCell.tau = hydroTau0 + cell_info[0]*hydroDtau;
+        newCell.x   = -hydroXmax/2. + cell_info[1]*hydroDx;
+        newCell.y   = -hydroXmax/2. + cell_info[2]*hydroDx;
+        newCell.eta = -hydro_eta_max/2. + cell_info[3]*hydroDeta;
+        newCell.temperature = cell_info[6];
+        newCell.ed = cell_info[4];
+        newCell.pressure = cell_info[5];
+        newCell.cs2 = cell_info[7];
+        newCell.u.x = cell_info[8];      // u^x
+        newCell.u.y = cell_info[9];      // u^y
+        newCell.u.z = cell_info[10];     // u^z
+        cellListSmall_.push_back(newCell);
+        ik++;
+        if (ik%50000 == 0) {
+            cout << "o" << flush;
+        }
+    }
+    cout << endl;
+    std::fclose(fin);
+    if (verbose_level > 1) {
+        cout << " done!" << endl;
+    }
+    EM_fields_array_length = cellListSmall_.size();
+    if (verbose_level > 1) {
+        cout << "number of fluid cells: "
+             << EM_fields_array_length << endl;
+    }
+}
+
+
 void EM_fields::calculate_EM_fields() {
     #pragma omp parallel
     {
@@ -637,28 +742,28 @@ void EM_fields::calculate_EM_fields() {
         double cosh_spectator_rap = cosh(spectator_rap);
         double sinh_spectator_rap = sinh(spectator_rap);
 
-        double participant_coeff_a = 0.5;
-        double participant_rapidity_envelop_coeff =
+        const double participant_coeff_a = 0.5;
+        const double participant_rapidity_envelop_coeff =
             participant_coeff_a/(2.*sinh(participant_coeff_a*spectator_rap));
-        int participant_rapidity_integral_ny = 50;
-        double *participant_rap_inte_y_array =
-                                new double[participant_rapidity_integral_ny];
-        double *participant_rap_inte_weight_array =
-                                new double[participant_rapidity_integral_ny];
-        gauss_quadrature(participant_rapidity_integral_ny, 1, 0.0, 0.0,
-                         -spectator_rap, spectator_rap,
-                         participant_rap_inte_y_array,
-                         participant_rap_inte_weight_array);
 
-        double dx_sq = 1.;
-        if (mode_ < 10) {
-            dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
+        double field_x, field_y, field_tau, field_eta;
+        if (mode_ == 7) {
+            field_x = cellListSmall_[i_array].x;
+            field_y = cellListSmall_[i_array].y;
+            field_tau = cellListSmall_[i_array].tau;
+            field_eta = cellListSmall_[i_array].eta;
+        } else {
+            field_x = cell_list[i_array].x;
+            field_y = cell_list[i_array].y;
+            field_tau = cell_list[i_array].tau;
+            field_eta = cell_list[i_array].eta;
         }
 
-        double field_x = cell_list[i_array].x;
-        double field_y = cell_list[i_array].y;
-        double field_tau = cell_list[i_array].tau;
-        double field_eta = cell_list[i_array].eta;
+        field_x = 0.;
+        field_y = 0.;
+        field_tau = 0.5;
+        field_eta = 0;
+
         double temp_sum_Ex_spectator = 0.0e0;
         double temp_sum_Ey_spectator = 0.0e0;
         double temp_sum_Ez_spectator = 0.0e0;
@@ -673,108 +778,64 @@ void EM_fields::calculate_EM_fields() {
         double z_local_spectator_2_sq = (z_local_spectator_2
                                          *z_local_spectator_2);
 
-        if (mode_ < 10) {
-            for (unsigned int i = 0;
-                    i < nucleon_density_grid_x_array_.size(); i++) {
-                double grid_x = nucleon_density_grid_x_array_[i];
-                for (unsigned int j = 0;
-                        j < nucleon_density_grid_y_array_.size(); j++) {
-                    double grid_y = nucleon_density_grid_y_array_[j];
-                    double x_local = field_x - grid_x;
-                    double y_local = field_y - grid_y;
-                    double r_perp_local_sq = x_local*x_local + y_local*y_local;
-                    double Delta_1 = sqrt(r_perp_local_sq
-                                          + z_local_spectator_1_sq);
-                    double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
-                    double Delta_2 = sqrt(r_perp_local_sq
-                                          + z_local_spectator_2_sq);
-                    double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
-                    double A_1 = (sigma/2.*(z_local_spectator_1 - Delta_1)
-                                          *sinh_spectator_rap);
-                    double A_2 = (sigma/2.*(z_local_spectator_2 + Delta_2)
-                                          *(-sinh_spectator_rap));
-                    double exp_A_1 = exp(A_1);
-                    double exp_A_2 = exp(A_2);
-                    double common_integrand_E = (
-                        spectator_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                          *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
-                        + spectator_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                          *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
-                    );
-                    double common_integrand_B = (
-                        spectator_density_1[i][j]/(Delta_1_cubic + 1e-15)
-                        *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1
-                        - spectator_density_2[i][j]/(Delta_2_cubic + 1e-15)
-                          *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2
-                    );
+        for (const auto &spec_i: spectators_1_) {
+            double grid_x = spec_i.x;
+            double grid_y = spec_i.y;
+            double x_local = field_x - grid_x;
+            double y_local = field_y - grid_y;
+            double r_perp_local_sq = x_local*x_local + y_local*y_local;
+            double Delta_1 = sqrt(r_perp_local_sq
+                                  + z_local_spectator_1_sq);
+            double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
+            double A_1 = (sigma/2.*(z_local_spectator_1 - Delta_1)
+                                  *sinh_spectator_rap);
+            double exp_A_1 = exp(A_1);
+            double common_integrand_E = (
+                spec_i.weight/(Delta_1_cubic + 1e-15)
+                *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1);
+            double common_integrand_B = (
+                spec_i.weight/(Delta_1_cubic + 1e-15)
+                *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1);
 
-                    double Ex_integrand = x_local*common_integrand_E;
-                    double Ey_integrand = y_local*common_integrand_E;
-                    double Bx_integrand = -y_local*common_integrand_B;
-                    double By_integrand = x_local*common_integrand_B;
+            double Ex_integrand = x_local*common_integrand_E;
+            double Ey_integrand = y_local*common_integrand_E;
+            double Bx_integrand = -y_local*common_integrand_B;
+            double By_integrand = x_local*common_integrand_B;
 
-                    temp_sum_Ex_spectator += Ex_integrand;
-                    temp_sum_Ey_spectator += Ey_integrand;
-                    temp_sum_Bx_spectator += Bx_integrand;
-                    temp_sum_By_spectator += By_integrand;
-                }
-            }
-        } else {
-            for (const auto &spec_i: spectators_1_) {
-                double grid_x = spec_i.x;
-                double grid_y = spec_i.y;
-                double x_local = field_x - grid_x;
-                double y_local = field_y - grid_y;
-                double r_perp_local_sq = x_local*x_local + y_local*y_local;
-                double Delta_1 = sqrt(r_perp_local_sq
-                                      + z_local_spectator_1_sq);
-                double Delta_1_cubic = Delta_1*Delta_1*Delta_1;
-                double A_1 = (sigma/2.*(z_local_spectator_1 - Delta_1)
-                                      *sinh_spectator_rap);
-                double exp_A_1 = exp(A_1);
-                double common_integrand_E = (1./(Delta_1_cubic + 1e-15)
-                    *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1);
-                double common_integrand_B = (1./(Delta_1_cubic + 1e-15)
-                    *(sigma/2.*sinh_spectator_rap*Delta_1 + 1.)*exp_A_1);
+            temp_sum_Ex_spectator += Ex_integrand;
+            temp_sum_Ey_spectator += Ey_integrand;
+            temp_sum_Bx_spectator += Bx_integrand;
+            temp_sum_By_spectator += By_integrand;
+        }
 
-                double Ex_integrand = x_local*common_integrand_E;
-                double Ey_integrand = y_local*common_integrand_E;
-                double Bx_integrand = -y_local*common_integrand_B;
-                double By_integrand = x_local*common_integrand_B;
+        for (const auto &spec_i: spectators_2_) {
+            double grid_x = spec_i.x;
+            double grid_y = spec_i.y;
+            double x_local = field_x - grid_x;
+            double y_local = field_y - grid_y;
+            double r_perp_local_sq = x_local*x_local + y_local*y_local;
+            double Delta_2 = sqrt(r_perp_local_sq
+                                  + z_local_spectator_2_sq);
+            double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
+            double A_2 = (sigma/2.*(z_local_spectator_2 + Delta_2)
+                                  *(-sinh_spectator_rap));
+            double exp_A_2 = exp(A_2);
+            double common_integrand_E = (
+                spec_i.weight/(Delta_2_cubic + 1e-15)
+                *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2);
+            double common_integrand_B = - (
+                spec_i.weight/(Delta_2_cubic + 1e-15)
+                *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2);
 
-                temp_sum_Ex_spectator += Ex_integrand;
-                temp_sum_Ey_spectator += Ey_integrand;
-                temp_sum_Bx_spectator += Bx_integrand;
-                temp_sum_By_spectator += By_integrand;
-            }
+            double Ex_integrand = x_local*common_integrand_E;
+            double Ey_integrand = y_local*common_integrand_E;
+            double Bx_integrand = -y_local*common_integrand_B;
+            double By_integrand = x_local*common_integrand_B;
 
-            for (const auto &spec_i: spectators_2_) {
-                double grid_x = spec_i.x;
-                double grid_y = spec_i.y;
-                double x_local = field_x - grid_x;
-                double y_local = field_y - grid_y;
-                double r_perp_local_sq = x_local*x_local + y_local*y_local;
-                double Delta_2 = sqrt(r_perp_local_sq
-                                      + z_local_spectator_2_sq);
-                double Delta_2_cubic = Delta_2*Delta_2*Delta_2;
-                double A_2 = (sigma/2.*(z_local_spectator_2 + Delta_2)
-                                      *(-sinh_spectator_rap));
-                double exp_A_2 = exp(A_2);
-                double common_integrand_E = (1./(Delta_2_cubic + 1e-15)
-                    *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2);
-                double common_integrand_B = - (1./(Delta_2_cubic + 1e-15)
-                    *(sigma/2.*sinh_spectator_rap*Delta_2 + 1.)*exp_A_2);
-
-                double Ex_integrand = x_local*common_integrand_E;
-                double Ey_integrand = y_local*common_integrand_E;
-                double Bx_integrand = -y_local*common_integrand_B;
-                double By_integrand = x_local*common_integrand_B;
-
-                temp_sum_Ex_spectator += Ex_integrand;
-                temp_sum_Ey_spectator += Ey_integrand;
-                temp_sum_Bx_spectator += Bx_integrand;
-                temp_sum_By_spectator += By_integrand;
-            }
+            temp_sum_Ex_spectator += Ex_integrand;
+            temp_sum_Ey_spectator += Ey_integrand;
+            temp_sum_Bx_spectator += Bx_integrand;
+            temp_sum_By_spectator += By_integrand;
         }
 
         // compute contribution from participants
@@ -785,6 +846,15 @@ void EM_fields::calculate_EM_fields() {
         double temp_sum_By_participant = 0.0e0;
 
         if (include_participant_contributions == 1) {
+            int participant_rapidity_integral_ny = 50;
+            double *participant_rap_inte_y_array =
+                                new double[participant_rapidity_integral_ny];
+            double *participant_rap_inte_weight_array =
+                                new double[participant_rapidity_integral_ny];
+            gauss_quadrature(participant_rapidity_integral_ny, 1, 0.0, 0.0,
+                             -spectator_rap, spectator_rap,
+                             participant_rap_inte_y_array,
+                             participant_rap_inte_weight_array);
             if (mode_ < 10) {
                 for (int k = 0; k < participant_rapidity_integral_ny; k++) {
                     double rap_local = participant_rap_inte_y_array[k];
@@ -870,37 +940,72 @@ void EM_fields::calculate_EM_fields() {
                             *participant_rap_inte_weight_array[k]);
                 }
             }
+            // clean up
+            delete[] participant_rap_inte_y_array;
+            delete[] participant_rap_inte_weight_array;
         }
 
-        cell_list[i_array].E_lab.x = (charge_fraction*alpha_EM
-            *(temp_sum_Ex_spectator*cosh_spectator_rap
-              + temp_sum_Ex_participant*participant_rapidity_envelop_coeff
-             )*dx_sq);
-        cell_list[i_array].E_lab.y = (charge_fraction*alpha_EM
-            *(temp_sum_Ey_spectator*cosh_spectator_rap
-              + temp_sum_Ey_participant*participant_rapidity_envelop_coeff
-             )*dx_sq);
-        cell_list[i_array].E_lab.z = (charge_fraction*alpha_EM
-            *(temp_sum_Ez_spectator
-              + temp_sum_Ez_participant*participant_rapidity_envelop_coeff
-             )*dx_sq);
-        cell_list[i_array].B_lab.x = (charge_fraction*alpha_EM
-            *(temp_sum_Bx_spectator*sinh_spectator_rap
-              + temp_sum_Bx_participant*participant_rapidity_envelop_coeff
-             )*dx_sq);
-        cell_list[i_array].B_lab.y = (charge_fraction*alpha_EM
-            *(temp_sum_By_spectator*sinh_spectator_rap
-              + temp_sum_By_participant*participant_rapidity_envelop_coeff
-             )*dx_sq);
-        cell_list[i_array].B_lab.z = 0.0;
+        if (mode_ == 7) {
+            cellListSmall_[i_array].E_lab.x = (charge_fraction*alpha_EM
+                *(temp_sum_Ex_spectator*cosh_spectator_rap
+                  + temp_sum_Ex_participant*participant_rapidity_envelop_coeff
+                 ));
+            cellListSmall_[i_array].E_lab.y = (charge_fraction*alpha_EM
+                *(temp_sum_Ey_spectator*cosh_spectator_rap
+                  + temp_sum_Ey_participant*participant_rapidity_envelop_coeff
+                 ));
+            cellListSmall_[i_array].E_lab.z = (charge_fraction*alpha_EM
+                *(temp_sum_Ez_spectator
+                  + temp_sum_Ez_participant*participant_rapidity_envelop_coeff
+                 ));
+            cellListSmall_[i_array].B_lab.x = (charge_fraction*alpha_EM
+                *(temp_sum_Bx_spectator*sinh_spectator_rap
+                  + temp_sum_Bx_participant*participant_rapidity_envelop_coeff
+                 ));
+            cellListSmall_[i_array].B_lab.y = (charge_fraction*alpha_EM
+                *(temp_sum_By_spectator*sinh_spectator_rap
+                  + temp_sum_By_participant*participant_rapidity_envelop_coeff
+                 ));
+            cellListSmall_[i_array].B_lab.z = 0.0;
 
-        // convert units to [GeV^2]
-        cell_list[i_array].E_lab.x *= hbarCsq;
-        cell_list[i_array].E_lab.y *= hbarCsq;
-        cell_list[i_array].E_lab.z *= hbarCsq;
-        cell_list[i_array].B_lab.x *= hbarCsq;
-        cell_list[i_array].B_lab.y *= hbarCsq;
-        cell_list[i_array].B_lab.z *= hbarCsq;
+            // convert units to [GeV^2]
+            cellListSmall_[i_array].E_lab.x *= hbarCsq;
+            cellListSmall_[i_array].E_lab.y *= hbarCsq;
+            cellListSmall_[i_array].E_lab.z *= hbarCsq;
+            cellListSmall_[i_array].B_lab.x *= hbarCsq;
+            cellListSmall_[i_array].B_lab.y *= hbarCsq;
+            cellListSmall_[i_array].B_lab.z *= hbarCsq;
+        } else {
+            cell_list[i_array].E_lab.x = (charge_fraction*alpha_EM
+                *(temp_sum_Ex_spectator*cosh_spectator_rap
+                  + temp_sum_Ex_participant*participant_rapidity_envelop_coeff
+                 ));
+            cell_list[i_array].E_lab.y = (charge_fraction*alpha_EM
+                *(temp_sum_Ey_spectator*cosh_spectator_rap
+                  + temp_sum_Ey_participant*participant_rapidity_envelop_coeff
+                 ));
+            cell_list[i_array].E_lab.z = (charge_fraction*alpha_EM
+                *(temp_sum_Ez_spectator
+                  + temp_sum_Ez_participant*participant_rapidity_envelop_coeff
+                 ));
+            cell_list[i_array].B_lab.x = (charge_fraction*alpha_EM
+                *(temp_sum_Bx_spectator*sinh_spectator_rap
+                  + temp_sum_Bx_participant*participant_rapidity_envelop_coeff
+                 ));
+            cell_list[i_array].B_lab.y = (charge_fraction*alpha_EM
+                *(temp_sum_By_spectator*sinh_spectator_rap
+                  + temp_sum_By_participant*participant_rapidity_envelop_coeff
+                 ));
+            cell_list[i_array].B_lab.z = 0.0;
+
+            // convert units to [GeV^2]
+            cell_list[i_array].E_lab.x *= hbarCsq;
+            cell_list[i_array].E_lab.y *= hbarCsq;
+            cell_list[i_array].E_lab.z *= hbarCsq;
+            cell_list[i_array].B_lab.x *= hbarCsq;
+            cell_list[i_array].B_lab.y *= hbarCsq;
+            cell_list[i_array].B_lab.z *= hbarCsq;
+        }
 
         if (verbose_level > 3) {
             if (omp_get_thread_num() == 0) {
@@ -915,9 +1020,6 @@ void EM_fields::calculate_EM_fields() {
                 }
             }
         }
-        // clean up
-        delete[] participant_rap_inte_y_array;
-        delete[] participant_rap_inte_weight_array;
     }
     #pragma omp barrier
     }
@@ -929,7 +1031,6 @@ void EM_fields::calculate_EM_fields_no_electric_conductivity() {
     double cosh_spectator_rap = cosh(spectator_rap);
     double sinh_spectator_rap = sinh(spectator_rap);
 
-    double dx_sq = nucleon_density_grid_dx*nucleon_density_grid_dx;
     for (int i_array = 0; i_array < EM_fields_array_length; i_array++) {
         double field_x = cell_list[i_array].x;
         double field_y = cell_list[i_array].y;
@@ -943,65 +1044,75 @@ void EM_fields::calculate_EM_fields_no_electric_conductivity() {
 
         double z_local_spectator_1 = field_tau*sinh(field_eta - spectator_rap);
         double z_local_spectator_2 = field_tau*sinh(field_eta + spectator_rap);
-        double z_local_spectator_1_sq = 
+        double z_local_spectator_1_sq =
                                     z_local_spectator_1*z_local_spectator_1;
         double z_local_spectator_2_sq =
                                     z_local_spectator_2*z_local_spectator_2;
 
-        for (unsigned int i = 0;
-                i < nucleon_density_grid_x_array_.size(); i++) {
-            double grid_x = nucleon_density_grid_x_array_[i];
-            for (unsigned int j = 0;
-                    j < nucleon_density_grid_y_array_.size(); j++) {
-                double grid_y = nucleon_density_grid_y_array_[j];
-                double x_local = field_x - grid_x;
-                double y_local = field_y - grid_y;
-                double r_perp_local_sq = x_local*x_local + y_local*y_local;
-                double r_spectator_1 = sqrt(
-                                r_perp_local_sq + z_local_spectator_1_sq);
-                double r_cubic_spectator_1 = (r_spectator_1*r_spectator_1
-                                              *r_spectator_1);
-                double r_spectator_2 = sqrt(
-                                r_perp_local_sq + z_local_spectator_2_sq);
-                double r_cubic_spectator_2 = (r_spectator_2*r_spectator_2
-                                              *r_spectator_2);
-                double spectator_integrand_1 = (
-                                spectator_density_1[i][j]/r_cubic_spectator_1);
-                double spectator_integrand_2 = (
-                                spectator_density_2[i][j]/r_cubic_spectator_2);
+        for (const auto &spec_i: spectators_1_) {
+            double grid_x = spec_i.x;
+            double grid_y = spec_i.y;
+            double x_local = field_x - grid_x;
+            double y_local = field_y - grid_y;
+            double r_perp_local_sq = x_local*x_local + y_local*y_local;
+            double r_spectator_1 = sqrt(
+                            r_perp_local_sq + z_local_spectator_1_sq);
+            double r_cubic_spectator_1 = (r_spectator_1*r_spectator_1
+                                          *r_spectator_1);
+            double spectator_integrand_1 = spec_i.weight/r_cubic_spectator_1;
 
-                double Ex_spectator_integrand = x_local*(
-                                spectator_integrand_1 + spectator_integrand_2);
-                double Ey_spectator_integrand = y_local*(
-                                spectator_integrand_1 + spectator_integrand_2);
-                double Ez_spectator_integrand = (
-                                  z_local_spectator_1*spectator_integrand_1
-                                + z_local_spectator_2*spectator_integrand_2);
-                double Bx_spectator_integrand = y_local*(
-                                spectator_integrand_1 - spectator_integrand_2);
-                double By_spectator_integrand = x_local*(
-                                spectator_integrand_1 - spectator_integrand_2);
-                temp_sum_Ex_spectator += Ex_spectator_integrand;
-                temp_sum_Ey_spectator += Ey_spectator_integrand;
-                temp_sum_Ez_spectator += Ez_spectator_integrand;
-                temp_sum_Bx_spectator += Bx_spectator_integrand;
-                temp_sum_By_spectator += By_spectator_integrand;
-            }
+            double Ex_spectator_integrand = x_local*spectator_integrand_1;
+            double Ey_spectator_integrand = y_local*spectator_integrand_1;
+            double Ez_spectator_integrand = (
+                              z_local_spectator_1*spectator_integrand_1);
+            double Bx_spectator_integrand = y_local*spectator_integrand_1;
+            double By_spectator_integrand = x_local*spectator_integrand_1;
+            temp_sum_Ex_spectator += Ex_spectator_integrand;
+            temp_sum_Ey_spectator += Ey_spectator_integrand;
+            temp_sum_Ez_spectator += Ez_spectator_integrand;
+            temp_sum_Bx_spectator += Bx_spectator_integrand;
+            temp_sum_By_spectator += By_spectator_integrand;
         }
+
+        for (const auto &spec_i: spectators_2_) {
+            double grid_x = spec_i.x;
+            double grid_y = spec_i.y;
+            double x_local = field_x - grid_x;
+            double y_local = field_y - grid_y;
+            double r_perp_local_sq = x_local*x_local + y_local*y_local;
+            double r_spectator_2 = sqrt(
+                            r_perp_local_sq + z_local_spectator_2_sq);
+            double r_cubic_spectator_2 = (r_spectator_2*r_spectator_2
+                                          *r_spectator_2);
+            double spectator_integrand_2 = spec_i.weight/r_cubic_spectator_2;
+
+            double Ex_spectator_integrand = x_local*spectator_integrand_2;
+            double Ey_spectator_integrand = y_local*spectator_integrand_2;
+            double Ez_spectator_integrand = (
+                                z_local_spectator_2*spectator_integrand_2);
+            double Bx_spectator_integrand = -y_local*spectator_integrand_2;
+            double By_spectator_integrand = -x_local*spectator_integrand_2;
+            temp_sum_Ex_spectator += Ex_spectator_integrand;
+            temp_sum_Ey_spectator += Ey_spectator_integrand;
+            temp_sum_Ez_spectator += Ez_spectator_integrand;
+            temp_sum_Bx_spectator += Bx_spectator_integrand;
+            temp_sum_By_spectator += By_spectator_integrand;
+        }
+
         cell_list[i_array].E_lab.x = (
             hbarCsq*charge_fraction*alpha_EM
-            *cosh_spectator_rap*temp_sum_Ex_spectator*dx_sq);
+            *cosh_spectator_rap*temp_sum_Ex_spectator);
         cell_list[i_array].E_lab.y = (
             hbarCsq*charge_fraction*alpha_EM
-            *cosh_spectator_rap*temp_sum_Ey_spectator*dx_sq);
+            *cosh_spectator_rap*temp_sum_Ey_spectator);
         cell_list[i_array].E_lab.z = (
-            hbarCsq*charge_fraction*alpha_EM*temp_sum_Ez_spectator*dx_sq);
+            hbarCsq*charge_fraction*alpha_EM*temp_sum_Ez_spectator);
         cell_list[i_array].B_lab.x = (
             hbarCsq*charge_fraction*alpha_EM
-            *((-sinh_spectator_rap)*temp_sum_Bx_spectator)*dx_sq);
+            *((-sinh_spectator_rap)*temp_sum_Bx_spectator));
         cell_list[i_array].B_lab.y = (
             hbarCsq*charge_fraction*alpha_EM
-            *(sinh_spectator_rap*temp_sum_By_spectator)*dx_sq);
+            *(sinh_spectator_rap*temp_sum_By_spectator));
         cell_list[i_array].B_lab.z = 0.0;
 
         if (verbose_level > 3) {
@@ -1078,7 +1189,7 @@ void EM_fields::output_EM_fields(string filename) {
                         << cell_list[i].B_lab.y*unit_convert << "   "
                         << cell_list[i].B_lab.z*unit_convert << endl;
         }
-    } else {
+    } else if (mode_ != 7) {
         output_file << "# tau[fm]  x[fm]  y[fm]  eta  "
                     << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
                     << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
@@ -1097,6 +1208,41 @@ void EM_fields::output_EM_fields(string filename) {
     output_file.close();
     return;
 }
+
+
+void EM_fields::output_EMfields_to_hydro_evo(string out_name_xyeta) {
+    FILE *out_file_xyeta;
+    out_file_xyeta = fopen(out_name_xyeta.c_str(), "wb");
+
+    // write header
+    hydroEvoHeader[15] = 17;
+    fwrite(hydroEvoHeader, sizeof(float), 16, out_file_xyeta);
+
+    for (const auto &icell: cellListSmall_) {
+        float cellInfo[] = {
+            static_cast<float>(icell.itau),
+            static_cast<float>(icell.ix),
+            static_cast<float>(icell.iy),
+            static_cast<float>(icell.ieta),
+            static_cast<float>(icell.ed),
+            static_cast<float>(icell.pressure),
+            static_cast<float>(icell.temperature),
+            static_cast<float>(icell.cs2),
+            static_cast<float>(icell.u.x),
+            static_cast<float>(icell.u.y),
+            static_cast<float>(icell.u.z),
+            static_cast<float>(icell.E_lab.x),
+            static_cast<float>(icell.E_lab.y),
+            static_cast<float>(icell.E_lab.z),
+            static_cast<float>(icell.B_lab.x),
+            static_cast<float>(icell.B_lab.y),
+            static_cast<float>(icell.B_lab.z),
+        };
+        fwrite(cellInfo, sizeof(float), 17, out_file_xyeta);
+    }
+    fclose(out_file_xyeta);
+}
+
 
 void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
     // this function outputs hypersurface file with drifting velocity
@@ -1322,6 +1468,7 @@ void EM_fields::output_surface_file_with_drifting_velocity(string filename) {
     }
     output_file.close();
 }
+
 
 void EM_fields::calculate_charge_drifting_velocity() {
     // this function calculates the drifting velocity of the fluid cell
@@ -1611,6 +1758,7 @@ void EM_fields::calculate_charge_drifting_velocity() {
     delete [] beta;
 }
 
+
 void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
 // boost u^mu with velocity v and store the boosted vector back in u^mu
 // v is a 3 vector and u_mu is a 4 vector
@@ -1638,6 +1786,7 @@ void EM_fields::lorentz_transform_vector_in_place(double *u_mu, double *v) {
         }
     }
 }
+
 
 void EM_fields::lorentz_transform_vector_with_Lambda(double *u_mu,
                                                      double *beta) {
@@ -1675,6 +1824,7 @@ void EM_fields::lorentz_transform_vector_with_Lambda(double *u_mu,
     }
 }
 
+
 void EM_fields::Lorentz_boost_EM_fields(double *E_lab, double *B_lab,
         double *beta, double *E_prime, double *B_prime) {
     // this function perform Lorentz boost for E_lab and B_lab fields
@@ -1702,6 +1852,7 @@ void EM_fields::Lorentz_boost_EM_fields(double *E_lab, double *B_lab,
                       - gamma_factor*beta_dot_B*beta[i]);
     }
 }
+
 
 void EM_fields::Lorentz_boost_EM_fields_tensor(double *E_lab, double *B_lab,
         double *beta, double *E_prime, double *B_prime) {
@@ -1766,6 +1917,7 @@ void EM_fields::Lorentz_boost_EM_fields_tensor(double *E_lab, double *B_lab,
     B_prime[1] = -Fmn_prime[1][3];
     B_prime[2] = Fmn_prime[1][2];
 }
+
 
 void EM_fields::cross_product(double *a, double *b, double *c) {
     // this function calculates c = a x b

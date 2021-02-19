@@ -55,8 +55,11 @@ class EM_fields {
     double **spectator_density_1, **spectator_density_2;
     double **participant_density_1, **participant_density_2;
 
+    int energy_density_grid_size_;
+    double energy_density_grid_dx_;
     std::vector<chargeSource> spectators_1_, spectators_2_;
-    std::vector<chargeSource> participants_1_, participants_2;
+    std::vector<chargeSource> participants_1_, participants_2_;
+    std::vector<double> ed_array_;
 
     // arraies for the space-time points of the EM fields
     int EM_fields_array_length;
@@ -72,6 +75,7 @@ class EM_fields {
     void set_4d_grid_points();
     void set_tau_grid_points(double x_local, double y_local, double eta_local);
     void read_in_densities(string path);
+    void read_in_energy_density(string filename);
     void read_in_spectators_density(string filename_1, string filename_2);
     void read_in_participant_density(string filename_1, string filename_2);
     void read_in_freezeout_surface_points_VISH2p1(string filename1,
@@ -83,6 +87,7 @@ class EM_fields {
     void calculate_EM_fields();
     void calculate_EM_fields_no_electric_conductivity();
     void calculate_charge_drifting_velocity();
+    void compute_averaged_EM_fields(string filename);
     void output_EM_fields(string filename);
     void output_surface_file_with_drifting_velocity(string filename);
     void lorentz_transform_vector_in_place(double *u_mu, double *v);

@@ -72,6 +72,9 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
                 participant_density_2[i][j] = 0.0;
             }
         }
+    } else if (mode_ == 10) {
+        energy_density_grid_size_ = paraRdr->getVal("energy_density_grid_size");
+        energy_density_grid_dx_ = paraRdr->getVal("energy_density_grid_dx");
     }
 
     n_eta = paraRdr->getVal("n_eta");
@@ -100,7 +103,7 @@ EM_fields::EM_fields(ParameterReader* paraRdr_in) {
 
     read_in_densities("./results");
 
-    if (mode_%10 == 0) {
+    if (mode_ == 10) {
         set_4d_grid_points();
     } else if (mode_ == 1) {
         read_in_freezeout_surface_points_VISH2p1("./results/surface.dat",
@@ -137,7 +140,6 @@ EM_fields::~EM_fields() {
             delete[] participant_density_1;
             delete[] participant_density_2;
         }
-
         cell_list.clear();
     }
     return;
@@ -152,7 +154,7 @@ void EM_fields::read_in_densities(string path) {
                              << "/spectator_density_A_disk.dat";
         spectator_2_filename << path
                              << "/spectator_density_B_disk.dat";
-    } else if (mode_ >= 10) {
+    } else if (mode_ == 10) {
         spectator_1_filename << path << "/spec_1.dat";
         spectator_2_filename << path << "/spec_2.dat";
     } else {
@@ -175,6 +177,11 @@ void EM_fields::read_in_densities(string path) {
             read_in_participant_density(participant_1_filename.str(),
                                         participant_2_filename.str());
         }
+    }
+    if (mode_ == 10) {
+        ostringstream energy_density_filename;
+        energy_density_filename << path << "/profile_NxN.dat";
+        read_in_energy_density(energy_density_filename.str());
     }
 }
 
@@ -219,7 +226,7 @@ void EM_fields::read_in_spectators_density(string filename_1,
             chargeSource spec_tmp;
             spec_tmp.x = x;
             spec_tmp.y = y;
-            spec_tmp.rapidity = spectator_rap;
+            spec_tmp.rapidity = -spectator_rap;
             spectators_2_.push_back(spec_tmp);
             spec2 >> x >> y;
         }
@@ -234,6 +241,33 @@ void EM_fields::read_in_spectators_density(string filename_1,
         cout << " done!" << endl;
     }
 }
+
+
+void EM_fields::read_in_energy_density(string filename) {
+    if (verbose_level > 3) {
+        cout << "read in energy density ...";
+    }
+    ifstream edfile(filename.c_str());
+    if (!edfile.good()) {
+        cout << "Error:EM_fields::read_in_energy_density: "
+             << "can not open file " << filename << endl;
+        exit(1);
+    }
+
+    ed_array_.resize(energy_density_grid_size_*energy_density_grid_size_, 0.);
+    int k = 0;
+    for (int j = 0; j < energy_density_grid_size_; j++) {
+        for (int i = 0; i < energy_density_grid_size_; i++) {
+            edfile >> ed_array_[k];
+            k++;
+        }
+    }
+    edfile.close();
+    if (verbose_level > 3) {
+        cout << " done!" << endl;
+    }
+}
+
 
 void EM_fields::read_in_participant_density(string filename_1,
                                             string filename_2) {
@@ -292,24 +326,31 @@ void EM_fields::set_tau_grid_points(double x_local, double y_local,
 
 void EM_fields::set_4d_grid_points() {
     cell_list.clear();
-    double EM_fields_grid_size = 20.0;
-    double EM_fields_grid_dx = 0.5;
-    double EM_fields_grid_neta = 41;
-    double EM_fields_grid_ntau = 11;
-    double EM_fields_grid_tau_max = 5.0;
-    int number_of_points =
-                static_cast<int>(EM_fields_grid_size/EM_fields_grid_dx) + 1;
-    double EM_fields_grid_deta = 2.*spectator_rap/(EM_fields_grid_neta - 1);
-    double EM_fields_grid_dtau =
-                EM_fields_grid_tau_max/(EM_fields_grid_ntau - 1);
+    double EM_fields_grid_size = ((energy_density_grid_size_ - 1)
+                                  *energy_density_grid_dx_);
+    int number_of_points = energy_density_grid_size_;
+
+    double EM_fields_grid_dx = energy_density_grid_dx_;
+
+    double EM_fields_grid_neta = 1;
+    double EM_fields_grid_deta = 0.1;
+
+    double EM_fields_grid_ntau = 21;
+    double EM_fields_grid_tau_max = 10.0;
+    double EM_fields_grid_dtau = (EM_fields_grid_tau_max
+                                  /(EM_fields_grid_ntau - 1));
+
     for (int l = 0; l < EM_fields_grid_ntau; l++) {
         double tau_local = 0.0 + l*EM_fields_grid_dtau;
         for (int k = 0; k < EM_fields_grid_neta; k++) {
-            double eta_local = -spectator_rap + k*EM_fields_grid_deta;
-            for (int i = 0; i < number_of_points; i++) {
-                double x_local = - EM_fields_grid_size/2. + i*EM_fields_grid_dx;
-                for (int j = 0; j < number_of_points; j++) {
-                    double y_local = - EM_fields_grid_size/2. + j*EM_fields_grid_dx;
+            //double eta_local = -spectator_rap + k*EM_fields_grid_deta;
+            double eta_local = 0. + k*EM_fields_grid_deta;
+            for (int j = 0; j < number_of_points; j++) {
+                double y_local = (- EM_fields_grid_size/2.
+                                  + j*EM_fields_grid_dx);
+                for (int i = 0; i < number_of_points; i++) {
+                    double x_local = (- EM_fields_grid_size/2.
+                                      + i*EM_fields_grid_dx);
                     fluidCell cell_local;
                     cell_local.tau = tau_local;
                     cell_local.x = x_local;
@@ -974,6 +1015,48 @@ void EM_fields::calculate_EM_fields_no_electric_conductivity() {
     }
     return;
 }
+
+
+void EM_fields::compute_averaged_EM_fields(string filename) {
+    ofstream output_file(filename.c_str());
+    output_file << "# tau[fm]  eta  "
+                << "eE_x[GeV^2]  eE_y[GeV^2]  eE_z[GeV^2]  "
+                << "eB_x[GeV^2]  eB_y[GeV^2]  eB_z[GeV^2]" << endl;
+    double weight = 0.;
+    int n_trans_points = energy_density_grid_size_*energy_density_grid_size_;
+    std::vector<double> Eavg(3, 0.);
+    std::vector<double> Bavg(3, 0.);
+    for (unsigned int icell = 0; icell < cell_list.size(); icell++) {
+        int itrans = icell % n_trans_points;
+        if (itrans == 0) {
+            for (int i = 0; i < 3; i++) {
+                Eavg[i] = 0.;
+                Bavg[i] = 0.;
+            }
+            weight = 0.;
+        }
+        Eavg[0] += cell_list[icell].E_lab.x*ed_array_[itrans];
+        Eavg[1] += cell_list[icell].E_lab.y*ed_array_[itrans];
+        Eavg[2] += cell_list[icell].E_lab.z*ed_array_[itrans];
+        Bavg[0] += cell_list[icell].B_lab.x*ed_array_[itrans];
+        Bavg[1] += cell_list[icell].B_lab.y*ed_array_[itrans];
+        Bavg[2] += cell_list[icell].B_lab.z*ed_array_[itrans];
+        weight  += ed_array_[itrans];
+        if (itrans == n_trans_points - 1) {
+            output_file << scientific << setw(12) << setprecision(6)
+                        << cell_list[icell].tau << "  "
+                        << cell_list[icell].eta << "  "
+                        << Eavg[0] << "  "
+                        << Eavg[1] << "  "
+                        << Eavg[2] << "  "
+                        << Bavg[0] << "  "
+                        << Bavg[1] << "  "
+                        << Bavg[2] << std::endl;
+        }
+    }
+    output_file.close();
+}
+
 
 void EM_fields::output_EM_fields(string filename) {
     // this function outputs the computed E and B fields to a text file

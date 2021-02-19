@@ -40,8 +40,12 @@ int main(int argc, char *argv[]) {
 
     EM_fields testEM(&paraRdr);
     testEM.calculate_EM_fields();
-    testEM.output_EM_fields("./results/EM_fields.dat");
-    if (mode_%10 != 0) {
+    if (mode_ == 10) {
+        testEM.compute_averaged_EM_fields("./results/EMavg.dat");
+    } else {
+        testEM.output_EM_fields("./results/EM_fields.dat");
+    }
+    if (mode_ % 10 != 0) {
         testEM.calculate_charge_drifting_velocity();
         testEM.output_surface_file_with_drifting_velocity(
                             "./results/surface_with_drifting_velocity.dat");

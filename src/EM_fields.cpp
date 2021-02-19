@@ -1046,12 +1046,12 @@ void EM_fields::compute_averaged_EM_fields(string filename) {
             output_file << scientific << setw(12) << setprecision(6)
                         << cell_list[icell].tau << "  "
                         << cell_list[icell].eta << "  "
-                        << Eavg[0] << "  "
-                        << Eavg[1] << "  "
-                        << Eavg[2] << "  "
-                        << Bavg[0] << "  "
-                        << Bavg[1] << "  "
-                        << Bavg[2] << std::endl;
+                        << Eavg[0]/weight << "  "
+                        << Eavg[1]/weight << "  "
+                        << Eavg[2]/weight << "  "
+                        << Bavg[0]/weight << "  "
+                        << Bavg[1]/weight << "  "
+                        << Bavg[2]/weight << std::endl;
         }
     }
     output_file.close();

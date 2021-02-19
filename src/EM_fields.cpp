@@ -670,19 +670,25 @@ void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
              << "Can not read the evolution file header" << endl;
         exit(1);
     }
-    for (int i = 0; i < 16; i++) hydroEvoHeader[i] = header[i];
 
     const float hydroTau0 = header[0];
     const float hydroDtau = header[1];
+    const int hydroNTauExtrap = static_cast<int>(hydroTau0/hydroDtau);
+    const float hydroTau0Extrap = hydroTau0 - hydroNTauExtrap*hydroDtau;
     const float hydroDx = header[3];
     const float hydroXmax = std::abs(header[4]);
     const float hydroDeta = header[9];
     const float hydro_eta_max = std::abs(header[10]);
     const int nVar_per_cell = static_cast<int>(header[15]);
 
+    // update the header for the hydro evolution
+    hydroEvoHeader[0] = hydroTau0Extrap;
+    for (int i = 1; i < 16; i++) hydroEvoHeader[i] = header[i];
+
+    int itau0 = -1;
     // read in fluid cells positions and informations
     float cell_info[nVar_per_cell];
-    int ik = 0;
+    std::vector<fluidCellSmall> cellListSmall_tau0;
     while (true) {
         status = 0;
         status = std::fread(&cell_info, sizeof(float), nVar_per_cell, fin);
@@ -692,6 +698,12 @@ void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
                  << "the evolution file format is not correct" << endl;
             exit(1);
         }
+
+        if (itau0 < 0) {
+            itau0 = static_cast<int>(cell_info[0]);
+        }
+
+        if (static_cast<int>(cell_info[0]) != itau0) break;
 
         fluidCellSmall newCell;
         newCell.itau = static_cast<int>(cell_info[0]);
@@ -709,7 +721,68 @@ void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
         newCell.u.x = cell_info[8];      // u^x
         newCell.u.y = cell_info[9];      // u^y
         newCell.u.z = cell_info[10];     // u^z
+
+        cellListSmall_tau0.push_back(newCell);
+    }
+
+    // extrapolate to early time with (0+1)D Bjorken expansion
+    cout << "first time step has " << cellListSmall_tau0.size() << " cells."
+         << endl;
+    cout << "Performing extrapolation to early time with Bjorken scaling ..."
+         << endl;
+    for (int itau = 0; itau < hydroNTauExtrap + 1 + itau0; itau++) {
+        for (const auto &icell: cellListSmall_tau0) {
+            fluidCellSmall newCell;
+            newCell.itau = itau;
+            newCell.ix   = icell.ix;
+            newCell.iy   = icell.iy;
+            newCell.ieta = icell.ieta;
+            newCell.tau = hydroTau0Extrap + itau*hydroDtau;
+            newCell.x   = icell.x;
+            newCell.y   = icell.y;
+            newCell.eta = icell.eta;
+            newCell.temperature = (
+                icell.temperature*pow(icell.tau/newCell.tau, 1./3.));
+            newCell.ed =(
+                icell.ed*pow(icell.tau/newCell.tau, 4./3.));
+            newCell.pressure = newCell.ed/3.;
+            newCell.cs2 = 1./3.;
+            newCell.u.x = icell.u.x;      // u^x
+            newCell.u.y = icell.u.y;      // u^y
+            newCell.u.z = icell.u.z;      // u^z
+            cellListSmall_.push_back(newCell);
+        }
+    }
+
+    int ik = 0;
+    while (true) {
+        fluidCellSmall newCell;
+        newCell.itau = static_cast<int>(cell_info[0]) + hydroNTauExtrap;
+        newCell.ix   = static_cast<int>(cell_info[1]);
+        newCell.iy   = static_cast<int>(cell_info[2]);
+        newCell.ieta = static_cast<int>(cell_info[3]);
+        newCell.tau = hydroTau0Extrap + newCell.itau*hydroDtau;
+        newCell.x   = -hydroXmax/2. + cell_info[1]*hydroDx;
+        newCell.y   = -hydroXmax/2. + cell_info[2]*hydroDx;
+        newCell.eta = -hydro_eta_max/2. + cell_info[3]*hydroDeta;
+        newCell.temperature = cell_info[6];
+        newCell.ed = cell_info[4];
+        newCell.pressure = cell_info[5];
+        newCell.cs2 = cell_info[7];
+        newCell.u.x = cell_info[8];      // u^x
+        newCell.u.y = cell_info[9];      // u^y
+        newCell.u.z = cell_info[10];     // u^z
         cellListSmall_.push_back(newCell);
+
+        status = 0;
+        status = std::fread(&cell_info, sizeof(float), nVar_per_cell, fin);
+
+        if (status == 0) break;
+        if (status != nVar_per_cell) {
+            cerr << "[readHydroData]: ERROR: "
+                 << "the evolution file format is not correct" << endl;
+            exit(1);
+        }
         ik++;
         if (ik%50000 == 0) {
             cout << "o" << flush;

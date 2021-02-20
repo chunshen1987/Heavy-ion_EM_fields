@@ -832,11 +832,6 @@ void EM_fields::calculate_EM_fields() {
             field_eta = cell_list[i_array].eta;
         }
 
-        field_x = 0.;
-        field_y = 0.;
-        field_tau = 0.5;
-        field_eta = 0;
-
         double temp_sum_Ex_spectator = 0.0e0;
         double temp_sum_Ey_spectator = 0.0e0;
         double temp_sum_Ez_spectator = 0.0e0;

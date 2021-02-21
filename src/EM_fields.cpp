@@ -711,9 +711,9 @@ void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
         newCell.iy   = static_cast<int>(cell_info[2]);
         newCell.ieta = static_cast<int>(cell_info[3]);
         newCell.tau = hydroTau0 + cell_info[0]*hydroDtau;
-        newCell.x   = -hydroXmax/2. + cell_info[1]*hydroDx;
-        newCell.y   = -hydroXmax/2. + cell_info[2]*hydroDx;
-        newCell.eta = -hydro_eta_max/2. + cell_info[3]*hydroDeta;
+        newCell.x   = -hydroXmax + cell_info[1]*hydroDx;
+        newCell.y   = -hydroXmax + cell_info[2]*hydroDx;
+        newCell.eta = -hydro_eta_max + cell_info[3]*hydroDeta;
         newCell.temperature = cell_info[6];
         newCell.ed = cell_info[4];
         newCell.pressure = cell_info[5];
@@ -762,9 +762,9 @@ void EM_fields::read_in_hydro_fluid_cells_MUSIC(string filename) {
         newCell.iy   = static_cast<int>(cell_info[2]);
         newCell.ieta = static_cast<int>(cell_info[3]);
         newCell.tau = hydroTau0Extrap + newCell.itau*hydroDtau;
-        newCell.x   = -hydroXmax/2. + cell_info[1]*hydroDx;
-        newCell.y   = -hydroXmax/2. + cell_info[2]*hydroDx;
-        newCell.eta = -hydro_eta_max/2. + cell_info[3]*hydroDeta;
+        newCell.x   = -hydroXmax + cell_info[1]*hydroDx;
+        newCell.y   = -hydroXmax + cell_info[2]*hydroDx;
+        newCell.eta = -hydro_eta_max + cell_info[3]*hydroDeta;
         newCell.temperature = cell_info[6];
         newCell.ed = cell_info[4];
         newCell.pressure = cell_info[5];

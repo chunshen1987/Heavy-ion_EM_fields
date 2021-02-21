@@ -47,11 +47,11 @@ int main(int argc, char *argv[]) {
                 "./results/evolution_all_xyeta_withEMfields.dat");
     } else {
         testEM.output_EM_fields("./results/EM_fields.dat");
-    }
-    if (mode_ % 10 != 0 && mode_ != 7) {
-        testEM.calculate_charge_drifting_velocity();
-        testEM.output_surface_file_with_drifting_velocity(
+        if (mode_ != 0) {
+            testEM.calculate_charge_drifting_velocity();
+            testEM.output_surface_file_with_drifting_velocity(
                             "./results/surface_with_drifting_velocity.dat");
+        }
     }
 
     sw.toc();

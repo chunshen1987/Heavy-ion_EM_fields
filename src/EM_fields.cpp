@@ -221,7 +221,7 @@ void EM_fields::read_in_spectators_density(string filename_1,
                     chargeSource spec_tmp;
                     spec_tmp.x = nucleon_density_grid_x_array_[i];
                     spec_tmp.y = nucleon_density_grid_y_array_[j];
-                    spec_tmp.rapidity = spectator_rap;
+                    spec_tmp.rapidity = -spectator_rap;
                     spec_tmp.weight = local_spec_density*dx_sq;
                     spectators_2_.push_back(spec_tmp);
                 }
